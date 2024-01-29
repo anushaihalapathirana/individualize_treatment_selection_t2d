@@ -1,0 +1,10 @@
+name: EUF
+channels:
+  - defaults
+dependencies:
+  - python=3.11
+  - notebook
+  - lightgbm
+  - torchvision
+  - torchaudio
+  - pytorch
