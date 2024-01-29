@@ -8,6 +8,7 @@ from scipy import stats
 import matplotlib.pyplot as plt
 import yaml
 import os 
+import sys
 
 from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split, KFold
@@ -46,7 +47,10 @@ import tensorflow as tf
 from tensorflow import keras
 import warnings
 warnings.filterwarnings('ignore')
-from imputation.constants import X_TRAIN_PATH, X_TEST_PATH, COMMON_VARIABLE_PATH
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from constants import COMMON_VARIABLE_PATH, X_TEST_PATH, X_TRAIN_PATH
 
 class Exp:
     def __init__(self):
