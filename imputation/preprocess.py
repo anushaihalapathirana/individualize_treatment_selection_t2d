@@ -7,6 +7,7 @@ import os
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from constants import DATA_WITHOUT_DATES, DATA_ONLY_DATES, COMMON_VARIABLE_PATH, X_TEST_PATH, X_TRAIN_PATH, SEED
+from helpers import get_missing_val_percentage
 class ImputationPreprocessing:
     
     def __init__(self):
@@ -61,18 +62,6 @@ class ImputationPreprocessing:
         nan_info = pd.DataFrame({'Feature': selected_columns, 'NaN Count': nan_counts})
         print("\n NaN counts in resonse variables:")
         print(nan_info)
-        
-    
-    def get_missing_val_percentage(self, df):
-        """ function to read missing value percentage in the dataframe 
-
-        Args:
-            df : dataframe
-
-        Returns:
-            percentages: missing value percentages in each dataframe column
-        """
-        return (df.isnull().sum()* 100 / len(df))
 
 
     def preprocess(self, df, test_size):
@@ -116,7 +105,7 @@ class ImputationPreprocessing:
         self.get_nan_count(df)
         
         #delete columns with more than threshold NaN. get missing values < threshold feature name list
-        missing_per = self.get_missing_val_percentage(df)
+        missing_per = get_missing_val_percentage(df)
         
         for i in range(df.columns.shape[0]):
             if missing_per[i] <= thresh: #setting the threshold as 40%

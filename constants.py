@@ -11,6 +11,8 @@ IMPUTED_TRAINING_DATA_PATH = 'imputed_data/imputed_all_training_data2.csv'
 TESTING_DATA_PATH = 'imputed_data/testing_all_data2.csv'
 COMMON_VARIABLE_PATH = '../common_variables.yml'
 
+TRAINING_DATA_FILE_PATH = '../imputation/imputed_data/imputed_all_training_data2.csv'
+TESTING_DATA_FILE_PATH = '../imputation/imputed_data/testing_all_data2.csv'
 SGLT_VALUE = 1
 DPP_VALUE = 0
 ORIGINAL_DPP_VALUE = 3

@@ -184,7 +184,7 @@ class ImputationBMI:
         
         model = RandomForestRegressor(n_estimators=150, max_depth=10, random_state=123)
         
-        model = cross_val(train, X_train, Y_train, model, self.response_variable_list, n_splits=10)
+        model = cross_val(model, train, X_test, Y_test, X_train, Y_train, self.response_variable_list, n_splits=3)
         model.fit(X_train, Y_train)
         # make a prediction
         yhat = model.predict(X_test)

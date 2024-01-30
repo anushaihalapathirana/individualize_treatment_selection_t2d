@@ -182,7 +182,7 @@ class ImputationLDL:
         model = XGBRegressor(n_estimators=50, eta=0.01, subsample=0.5, colsample_bytree=0.8, alpha=0.1,
                 max_depth = 5, max_leaves = 6, learning_rate =0.1)
         
-        model = cross_val(train, X_train, Y_train, model, self.response_variable_list, n_splits=10)
+        model = cross_val(model, train, X_test, Y_test, X_train, Y_train, self.response_variable_list, n_splits=3)
         model.fit(X_train, Y_train)
         # make a prediction
         yhat = model.predict(X_test)

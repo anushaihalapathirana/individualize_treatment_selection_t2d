@@ -10,6 +10,32 @@ from sklearn.multioutput import MultiOutputRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 from constants import SEED, DPP_VALUE, SGLT_VALUE, ORIGINAL_DPP_VALUE, ORIGINAL_SGLT_VALUE
 
+def get_missing_val_percentage(df):
+        """ function to read missing value percentage in the dataframe 
+
+        Args:
+            df : dataframe
+
+        Returns:
+            percentages: missing value percentages in each dataframe column
+        """
+        return (df.isnull().sum()* 100 / len(df))
+
+def filter_by(df, condition_str):
+    """function to filter by a condition
+
+    Args:
+        df: dataframe
+        condition_str: condition to filter, send as a string
+
+    Returns:
+        filtered_df: filtered dataframe
+    """
+    if condition_str:
+        condition = eval(condition_str)
+        filtered_df = df[condition]
+        return filtered_df
+    
 def countUsers(drug_id, df):
     df2 = df.apply(lambda x : True
                 if x['drug_class'] == drug_id else False, axis = 1)
@@ -29,10 +55,12 @@ def print_sample_count(df, X_train_, X_test_):
     print('==== sample count in testing data =======')
     print(' number of dpp4 : ', countUsers(DPP_VALUE, X_test_))
     print(' number of sglt2 : ', countUsers(SGLT_VALUE, X_test_))
-    
 
-def get_features_kbest(X_train, Y_train, k):
-    selector = SelectKBest(score_func=mutual_info_regression, k=k)
+
+def get_features_kbest(X_train, Y_train,i):
+    random.seed(SEED)
+    np.random.seed(SEED)
+    selector = SelectKBest(score_func=mutual_info_regression, k=i)
     # Fit the selector to your data and transform the feature matrix
     X_selected = selector.fit_transform(X_train, Y_train)
 
@@ -44,9 +72,8 @@ def get_features_kbest(X_train, Y_train, k):
     selected_features = selected_features.to_list()
     return selected_features
 
-
-def get_features_ref(X_train, Y_train, k=3): 
-    random.seed(SEED)
+def get_features_ref_multiout(X_train, Y_train, k=12): 
+    random.seed(42)
     model = MultiOutputRegressor(RandomForestRegressor(random_state = 123))
 #     model = RandomForestRegressor(random_state = 123)
     model.fit(X_train, Y_train)  # Fit the model before using RFE
@@ -57,17 +84,18 @@ def get_features_ref(X_train, Y_train, k=3):
     selected_features = [feature_name for feature_name in X_train.columns[selected_indices]]
     return selected_features
 
-def get_features_ref_single(X_train, Y_train, k=3): 
-    random.seed(SEED)  # Fit the model before using RFE
-    model = RandomForestRegressor(random_state=123)
-    rfe = RFE(estimator=model, n_features_to_select=k)  
+def get_features_ref(X_train, Y_train,i): 
+    random.seed(SEED)
+    model = RandomForestRegressor(random_state = 123)
+    rfe = RFE(estimator=model, n_features_to_select=i)  
     X_selected = rfe.fit_transform(X_train, Y_train)
     selected_indices = rfe.get_support(indices=True)
     selected_features = [feature_name for feature_name in X_train.columns[selected_indices]]
     return selected_features
 
-def get_features_relieff(X_train, Y_train, k):
-    best_n = k
+  
+def get_features_relieff(X_train, Y_train,i):
+    best_n = i
     X_train_array = X_train.to_numpy()
     y_train_array = Y_train.to_numpy()
     fs = ReliefF()
@@ -88,13 +116,13 @@ def get_features_relieff(X_train, Y_train, k):
     for i in best:
         feat_names.append(i[0])
     return feat_names
-  
 
 def outlier_detect(X_train, Y_train, X_test, Y_test):
     # Fit the model for each output in Y_train
     models = []
     predictions_train = []
-    
+    #X_train = X_train.apply(pd.to_numeric)
+    #Y_train = pd.to_numeric(Y_train)
     for col in Y_train.columns:
         model = sm.OLS(Y_train[col], X_train).fit()
         predictions_train.append(model.predict(X_train))
@@ -102,6 +130,11 @@ def outlier_detect(X_train, Y_train, X_test, Y_test):
 
     # Make predictions for each output in Y_test
     predictions = np.column_stack([model.predict(X_test) for model in models])
+
+    # Print out the statistics for each output
+    #for i, model in enumerate(models):
+    #    print(f"Summary for Output {i + 1}:")
+    #    display(model.summary())
 
     # Check for outliers in training set
     out_train = []
@@ -138,23 +171,30 @@ def outlier_detect(X_train, Y_train, X_test, Y_test):
     
     return out_train, out_test
 
+
 def get_model_name(model):
     model_name = str(type(model)).split('.')[-1][:-2]
     return model_name
 
-def cross_val(train, X_train, Y_train, model, response_variable_list, n_splits=10):
+def cross_val(model, train, X_test, Y_test, X_train, Y_train, response_variable_list, n_splits=3):
     dfs = []
     acc_arr = []
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=123)
     i = 1
+    random.seed(42)
     for train_index, test_index in kf.split(train, Y_train):
         X_train1 = train.iloc[train_index].loc[:, X_train.columns]
         X_test1 = train.iloc[test_index].loc[:,X_train.columns]
         y_train1 = train.iloc[train_index].loc[:,response_variable_list]
         y_test1 = train.iloc[test_index].loc[:,response_variable_list]
         
-        #Train the model
-        model.fit(X_train1, y_train1) #Training the model
+        if (get_model_name(model)=='Sequential'):
+            random.seed(42)
+            model.fit(X_train1, y_train1,epochs=250, batch_size=16, verbose=0)
+        else:
+            #Train the model
+            random.seed(42)
+            model.fit(X_train1, y_train1) #Training the model
         
         # auc cal
         y_scores = model.predict(X_test1)
@@ -181,22 +221,20 @@ def cross_val(train, X_train, Y_train, model, response_variable_list, n_splits=1
 
 
 def get_scores(model, X_test, Y_test, X_train, Y_train, model_results, model_results_drugs, name = ''):
-    preds = model.predict(X_test)
-    score = model.score(X_test,Y_test)
+    pred = model.predict(X_test)
+    score = r2_score(Y_test, pred)
     
-    # Calculate R2 scores for each target
-    r2_train = model.score(X_train, Y_train)
-    r2_test = model.score(X_test, Y_test)
-        
+    r2_train = model.score(X_train, Y_train)        
     print(f'R2 score Training :', r2_train)
-    print(f'R2 score Testing :', r2_test)
-        
-    rmse = np.sqrt(mean_squared_error(Y_test, preds))
-    print(f"RMSE (Target): {rmse}")
-        
+    r_squared = r2_score(Y_test, pred)
+    print(f"R2 score Testing: {r_squared:.4f}")
+
+    rmse = np.sqrt(mean_squared_error(Y_test, pred))
+    print("RMSE: %f" % (rmse))
     if not name.strip():
-        model_results[str(get_model_name(model))] = score
+        model_results[str(get_model_name(model))] = r2_score(Y_test, pred)  
     else:
-        model_results_drugs[str(get_model_name(model)+'_'+name)] = score
-        
-    return preds, model_results, model_results_drugs, score
+        model_results_drugs[str(get_model_name(model)+'_'+name)] = r2_score(Y_test, pred)
+    return pred, model_results, model_results_drugs, score
+
+    
