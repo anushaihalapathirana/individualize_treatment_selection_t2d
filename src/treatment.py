@@ -2,8 +2,10 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from tabulate import tabulate
 from constants import SGLT_VALUE, DPP_VALUE
-from helpers import print_val, find_lowest_respponse_value, find_highest_respponse_value
+from helpers import print_val, find_lowest_respponse_value, find_highest_respponse_value, print_strata_data,\
+    check_aggreement
 
 class Treatment:
     def __init__(self, X_test, Y_train, model, scaler, X_test_original):
@@ -134,5 +136,108 @@ class Treatment:
 
         dpp_strata_actual = data[(data['drug_class'] == DPP_VALUE)]
         sglt_strata_actual = data[(data['drug_class'] == SGLT_VALUE)] 
+        
+        strata_dictionary = {
+            'dpp_strata_hba1c': dpp_strata_hba1c,
+            'sglt_strata_hba1c': sglt_strata_hba1c,
+            'dpp_strata_ldl': dpp_strata_ldl,
+            'sglt_strata_ldl': sglt_strata_ldl,
+            'dpp_strata_hdl': dpp_strata_hdl,
+            'sglt_strata_hdl': sglt_strata_hdl,
+            'dpp_strata_bmi': dpp_strata_bmi,
+            'sglt_strata_bmi': sglt_strata_bmi,
+            'dpp_strata_actual': dpp_strata_actual,
+            'sglt_strata_actual': sglt_strata_actual
+        }
+        
+        print_strata_data(strata_dictionary)
+        return strata_dictionary
+        
+    def get_concordant_discordant(self, dpp_strata, sglt_strata, data, dpp_strata_actual, sglt_strata_actual, variable_name):
 
+        concordant_dpp, discordant_dpp_sglt = check_aggreement(dpp_strata, SGLT_VALUE, data, variable_name)
+
+        concordant_sglt, discordant_sglt_dpp = check_aggreement(sglt_strata, DPP_VALUE, data, variable_name)
+
+        print(" =========== Total number of samples assigned by the model VS Total number of samples in original test data")
+        print('DPP samples ', concordant_dpp.shape[0]+discordant_dpp_sglt.shape[0],  dpp_strata_actual.shape[0])
+        print('SGLT samples ', concordant_sglt.shape[0]+discordant_sglt_dpp.shape[0], sglt_strata_actual.shape[0])
+        print('\n')
     
+        # Your data
+        concordant_dpp_count = concordant_dpp.shape[0]
+        discordant_dpp_sglt_count = discordant_dpp_sglt.shape[0]
+        concordant_sglt_count = concordant_sglt.shape[0]
+        discordant_sglt_dpp_count = discordant_sglt_dpp.shape[0]
+
+        if((concordant_dpp_count + discordant_dpp_sglt_count != 0) & (concordant_sglt_count + discordant_sglt_dpp_count !=0)):
+        # Calculate percentages
+            concordant_dpp_percentage = (concordant_dpp_count / (concordant_dpp_count + discordant_dpp_sglt_count)) * 100
+            concordant_sglt_percentage = (concordant_sglt_count / (concordant_sglt_count + discordant_sglt_dpp_count)) * 100
+            discordant_dpp_sglt_percentage = (discordant_dpp_sglt_count / (concordant_dpp_count + discordant_dpp_sglt_count)) * 100
+            discordant_sglt_dpp_percentage = (discordant_sglt_dpp_count / (concordant_sglt_count + discordant_sglt_dpp_count)) * 100
+        else:
+            concordant_dpp_percentage = 1
+            concordant_sglt_percentage = 1
+            discordant_dpp_sglt_percentage=1
+            discordant_sglt_dpp_percentage =1
+        # Data for the table
+        data = [
+            ["Concordant", "DPP", "DPP", concordant_dpp_count, f"{concordant_dpp_percentage:.2f}%"],
+            ["Discordant", "SGLT", "DPP", discordant_sglt_dpp_count, f"{discordant_sglt_dpp_percentage:.2f}%"],
+            
+            ["Concordant", "SGLT","SGLT", concordant_sglt_count, f"{concordant_sglt_percentage:.2f}%"],
+            ["Discordant", "DPP", "SGLT", discordant_dpp_sglt_count, f"{discordant_dpp_sglt_percentage:.2f}%"],
+        ]
+
+        # Print the table
+        print(tabulate(data, headers=["Category","Real value", "Predicted value",  "Count", "Percentage of Predicted cases"]))
+        print('\n')
+        
+        return ( concordant_dpp, discordant_dpp_sglt,
+                concordant_sglt, discordant_sglt_dpp)
+        
+    def print_concordant_discordant(self, strata_dictionary, data):
+        print('HBA1C')
+        (concordant_dpp_hba1c, discordant_dpp_sglt_hba1c,
+            concordant_sglt_hba1c, discordant_sglt_dpp_hba1c ) = self.get_concordant_discordant(strata_dictionary['dpp_strata_hba1c'], strata_dictionary['sglt_strata_hba1c'],\
+                                                                                                data, strata_dictionary['dpp_strata_actual'], strata_dictionary['sglt_strata_actual'],\
+                                                                                                variable_name = 'assigned_drug_hba1c')
+        print('LDL')
+        (concordant_dpp_ldl, discordant_dpp_sglt_ldl,
+            concordant_sglt_ldl, discordant_sglt_dpp_ldl ) = self.get_concordant_discordant(strata_dictionary['dpp_strata_ldl'], strata_dictionary['sglt_strata_ldl'],\
+                                                            data, strata_dictionary['dpp_strata_actual'], strata_dictionary['sglt_strata_actual'],\
+                                                            variable_name = 'assigned_drug_ldl')
+        print('HDL')
+        (concordant_dpp_hdl, discordant_dpp_sglt_hdl,
+            concordant_sglt_hdl, discordant_sglt_dpp_hdl ) = self.get_concordant_discordant(strata_dictionary['dpp_strata_hdl'],strata_dictionary['sglt_strata_hdl'],\
+                                                            data, strata_dictionary['dpp_strata_actual'], strata_dictionary['sglt_strata_actual'],\
+                                                            variable_name = 'assigned_drug_hdl')
+        print('BMI') 
+        (concordant_dpp_bmi, discordant_dpp_sglt_bmi,
+            concordant_sglt_bmi, discordant_sglt_dpp_bmi ) = self.get_concordant_discordant(strata_dictionary['dpp_strata_bmi'], strata_dictionary['sglt_strata_bmi'],\
+                                                            data, strata_dictionary['dpp_strata_actual'], strata_dictionary['sglt_strata_actual'],\
+                                                            variable_name = 'assigned_drug_bmi')
+        con_dis_groups = {
+            'concordant_dpp_hba1c': concordant_dpp_hba1c,
+            'discordant_dpp_sglt_hba1c': discordant_dpp_sglt_hba1c,
+            'concordant_sglt_hba1c': concordant_sglt_hba1c,
+            'discordant_sglt_dpp_hba1c': discordant_sglt_dpp_hba1c,
+            'concordant_dpp_ldl': concordant_dpp_ldl,
+            'discordant_dpp_sglt_ldl': discordant_dpp_sglt_ldl,
+            'concordant_sglt_ldl': concordant_sglt_ldl,
+            'discordant_sglt_dpp_ldl': discordant_sglt_dpp_ldl,
+            'concordant_dpp_hdl': concordant_dpp_hdl,
+            'discordant_dpp_sglt_hdl': discordant_dpp_sglt_hdl,
+            'concordant_sglt_hdl': concordant_sglt_hdl,
+            'discordant_sglt_dpp_hdl': discordant_sglt_dpp_hdl,
+            'concordant_dpp_bmi': concordant_dpp_bmi,
+            'discordant_dpp_sglt_bmi': discordant_dpp_sglt_bmi,
+            'concordant_sglt_bmi': concordant_sglt_bmi,
+            'discordant_sglt_dpp_bmi': discordant_sglt_dpp_bmi,
+        }
+
+        return con_dis_groups
+            
+
+                

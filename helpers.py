@@ -264,3 +264,30 @@ def find_closest_to_42(pred_sglt, pred_dpp):
     closest_value = values[max_index]
     drug_class = drug_classes[max_index]
     return closest_value, drug_class
+
+def print_strata_data(stratas):
+    print(' Sample count in test data')
+    print(' number of dpp4 samples in test dataset : ', stratas['dpp_strata_actual'].shape[0])
+    print(' number of sglt2 samples in test dataset : ', stratas['sglt_strata_actual'].shape[0])
+
+    print(' \n Assigned sample count: HBA1C')
+    print(' number of dpp4 assigned : ', stratas['dpp_strata_hba1c'].shape[0])
+    print(' number of sglt2 assigned : ', stratas['sglt_strata_hba1c'].shape[0])
+
+    print(' \n Assigned sample count: LDL')
+    print(' number of dpp4 assigned : ', stratas['dpp_strata_ldl'].shape[0])
+    print(' number of sglt2 assigned : ', stratas['sglt_strata_ldl'].shape[0])
+
+    print(' \n Assigned sample count: HDL')
+    print(' number of dpp4 assigned : ', stratas['dpp_strata_hdl'].shape[0])
+    print(' number of sglt2 assigned : ', stratas['sglt_strata_hdl'].shape[0])
+
+    print(' \n Assigned sample count: BMI')
+    print(' number of dpp4 assigned : ', stratas['dpp_strata_bmi'].shape[0])
+    print(' number of sglt2 assigned : ', stratas['sglt_strata_bmi'].shape[0])
+
+def check_aggreement(df, discordant_1, data, variable_name):
+    concordant = df[df[variable_name] == df['drug_class']]
+    discordant_df_1 = df[df['drug_class'] == discordant_1]
+    
+    return concordant, discordant_df_1
