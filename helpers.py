@@ -237,4 +237,30 @@ def get_scores(model, X_test, Y_test, X_train, Y_train, model_results, model_res
         model_results_drugs[str(get_model_name(model)+'_'+name)] = r2_score(Y_test, pred)
     return pred, model_results, model_results_drugs, score
 
+
+def print_val(name, pred_sglt, pred_dpp):
+    print(name)
+    print(pred_sglt)
+    print(pred_dpp)
     
+def find_lowest_respponse_value(pred_sglt, pred_dpp):
+    values = [pred_sglt, pred_dpp]
+    max_index = values.index(min(values))
+    max_difference = [pred_sglt, pred_dpp][max_index]
+    drug_class = [SGLT_VALUE, DPP_VALUE][max_index]
+    return max_difference, drug_class
+
+def find_highest_respponse_value(pred_sglt, pred_dpp):
+    values = [pred_sglt, pred_dpp]
+    max_index = values.index(max(values))
+    max_difference = [pred_sglt, pred_dpp][max_index]
+    drug_class = [SGLT_VALUE, DPP_VALUE][max_index]
+    return max_difference, drug_class
+
+def find_closest_to_42(pred_sglt, pred_dpp):
+    values = [pred_sglt, pred_dpp]
+    drug_classes = [SGLT_VALUE, DPP_VALUE]
+    max_index = min(range(len(values)), key=lambda i: abs(values[i] - 42.0))
+    closest_value = values[max_index]
+    drug_class = drug_classes[max_index]
+    return closest_value, drug_class

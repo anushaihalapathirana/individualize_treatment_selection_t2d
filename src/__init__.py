@@ -306,6 +306,35 @@ class Exp:
         model_results, model = self.train_models(model, X_test_selected, Y_test, X_train_selected, Y_train, train, scaler, X_test_original)
         return model_results, model, X_test_selected, Y_test, X_train_selected, Y_train, train, scaler, X_test_original
 
+    def plot_actual_pred(self, df, pred_, drug_class):
+        # Number of target features
+        num_targets = df.shape[1]
+        names = df.columns.tolist()
+        # Create subplots for each target feature
+        fig, axes = plt.subplots(nrows=1, ncols=num_targets, figsize=(15, 5))
+
+        # Set a common title
+        fig.suptitle('Scatterplot of Actual vs. Predicted Values')
+
+        # Plot each target feature separately
+        for i, val in enumerate(names):
+            ax = axes[i] if num_targets > 1 else axes  # Handle the case when there's only one target
+
+            ax.scatter(df.iloc[:, i], pred_[:, i], marker='o', s=10, c=drug_class ,cmap='winter', label=f'Target {i + 1} Data Points')
+            ax.plot(df.iloc[:, i], np.poly1d(np.polyfit(df.iloc[:, i], pred_[:, i], 1))(df.iloc[:, i]), color='red', linestyle='--', label=f'Target {i + 1} Regression Line')
+
+            ax.set_xlabel(f'Actual Values (Target {val})')
+            ax.set_ylabel(f'Predicted Values (Target {val})')
+            ax.legend()
+            ax.grid(True)
+
+        # Adjust layout for better appearance
+        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+        # Save the figure with higher resolution
+        # plt.savefig('MultiOutput_Scatterplot.png', dpi=300, bbox_inches='tight')
+
+        plt.show()
     
 if __name__ == "__main__":
     print("Initialte model...")
@@ -318,6 +347,11 @@ if __name__ == "__main__":
 
     table_str = tabulate(table, headers=['Model', 'Test R2 Score'], tablefmt='grid')
     print(table_str)
-        
+    
+    # Plot predict vs actual
+    y_pred = model.predict(X_test)
+    y_pred_train = model.predict(X_train)
+    exp.plot_actual_pred(Y_test, y_pred, X_test['drug_class'])
+    exp.plot_actual_pred(Y_train, y_pred_train, X_train['drug_class'])   
 
         
