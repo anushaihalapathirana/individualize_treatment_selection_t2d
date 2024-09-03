@@ -41,6 +41,14 @@ from imblearn.over_sampling import BorderlineSMOTE
 
 from sklearn.multioutput import RegressorChain, MultiOutputRegressor
 
+def read_data(file_path):
+        """Read training data file
+
+        Returns:
+            df: dataframe
+        """
+        df = pd.read_csv(file_path, sep = ',',decimal = '.', encoding = 'utf-8', engine ='python', index_col=0)
+        return df
 
 def get_nan_count(df):
     """Print NaN count in selected columns
@@ -304,6 +312,33 @@ def outlier_detect(X_train, Y_train, X_test, Y_test):
     
     return out_train, out_test
 
+def remove_outliers(X_train, X_test, Y_train, Y_test, response_variable_list):
+        ################# OUTLIER ################
+        print('Shape of training data before removing outliers:', np.shape(X_train))
+        print('Shape of test data before removing outliers:', np.shape(X_test))
+            
+        out_train, out_test = outlier_detect(X_train, Y_train, X_test, Y_test)
+        
+        train_ = X_train.copy()
+        train_[response_variable_list] = Y_train.values
+            
+        test_ = X_test.copy()
+        test_[response_variable_list] = Y_test.values
+            
+        train_ = pd.DataFrame(train_.drop(out_train, axis = 0))
+        test_ = pd.DataFrame(test_.drop(out_test, axis = 0))
+            
+        Y_train = train_[response_variable_list]
+        X_train = train_.drop(response_variable_list, axis=1)
+            
+        Y_test = test_[response_variable_list]
+        X_test = test_.drop(response_variable_list, axis=1)
+            
+        print('Shape of training data after removing outliers:', np.shape(X_train))
+        print('Shape of test data after removing outliers:', np.shape(X_test))
+        
+        return X_train, X_test, Y_train, Y_test
+    
 def cross_val(model, train, X_train, Y_train, response_variable_list, n_splits=10):
     
     dfs = []
@@ -370,3 +405,14 @@ def get_scores(model, X_test, Y_test, X_train, Y_train, name = ''):
         model_results_drugs[str(get_model_name(model)+'_'+name)] = score
         
     return preds, model_results, model_results_drugs, score
+
+def missing_value_prediction(model, df_missing, df_original, selected_features, df_missing_val_original, file_path, target_variable):
+    df_missing_val = df_missing[selected_features]
+    mv_pred_test_numpy = model.predict(df_missing_val)
+    print('Length of mv pred test numpy array: ', len(mv_pred_test_numpy))
+    df_missing_val_original[target_variable] = mv_pred_test_numpy
+    print('Shape of df_missing_val_original '+ target_variable +': ', df_missing_val_original[target_variable])
+    result_df = pd.concat([df_original, df_missing_val_original])
+    # Save file
+    result_df.to_csv(file_path, index=True)
+    print(result_df[[target_variable]])

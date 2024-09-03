@@ -3,24 +3,33 @@ import numpy as np
 import random
 import yaml
 import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
-from constants import DATA_WITHOUT_DATES, DATA_ONLY_DATES, COMMON_VARIABLE_PATH, X_TEST_PATH, X_TRAIN_PATH, SEED
-from helpers import get_missing_val_percentage
+from constants import DATA_WITHOUT_DATES, DATA_ONLY_DATES, COMMON_VARIABLE_PATH, TEST_PATH, TRAIN_PATH, SEED
+
+from utils import get_nan_count, get_missing_val_percentage
+
 class ImputationPreprocessing:
     
     def __init__(self):
         # Get the current script's directory
         self.script_directory = os.path.dirname(os.path.abspath(__file__))
 
-        # Specify the full path to the CSV file
-        self.file_path_without_dates = os.path.join(self.script_directory, DATA_WITHOUT_DATES)
-        self.file_path_only_dates = os.path.join(self.script_directory, DATA_ONLY_DATES)
-        self.file_path_common_variables = os.path.join(self.script_directory, COMMON_VARIABLE_PATH)
+        # Define the relative path to the CSV file from the script's directory
+        relative_path_to_data_wo_dates = os.path.join("..", DATA_WITHOUT_DATES)
+        relative_path_to_data_only_dates = os.path.join("..", DATA_ONLY_DATES)
+        
+        # Get the absolute path to the CSV file
+        self.file_path_without_dates = os.path.abspath(os.path.join(self.script_directory, relative_path_to_data_wo_dates))
+        self.file_path_only_dates = os.path.abspath(os.path.join(self.script_directory, relative_path_to_data_only_dates))
+        
+        self.file_path_common_variables = os.path.abspath(os.path.join(self.script_directory, COMMON_VARIABLE_PATH))
 
-        self.file_path_X_train = os.path.join(self.script_directory, X_TRAIN_PATH)
-        self.file_path_X_test = os.path.join(self.script_directory, X_TEST_PATH)
+        self.file_path_X_train = os.path.join(self.script_directory, TRAIN_PATH)
+        self.file_path_X_test = os.path.join(self.script_directory, TEST_PATH)
         
         # Read common variables from a YAML file
         with open(self.file_path_common_variables, 'r') as file:
@@ -48,21 +57,7 @@ class ImputationPreprocessing:
         # Add selected columns from dfdate to df
         for col in columns_to_add:
             df[col] = df_date[col]
-        
         return df
-
-    def get_nan_count(self, df):
-        """Print NaN count in selected columns
-
-        Args:
-            df : dataframe
-        """
-        selected_columns = df[['hba1c_12m', 'ldl_12m', 'hdl_12m', 'bmi_12m']].columns
-        nan_counts = df[selected_columns].isna().sum()
-        nan_info = pd.DataFrame({'Feature': selected_columns, 'NaN Count': nan_counts})
-        print("\n NaN counts in resonse variables:")
-        print(nan_info)
-
 
     def preprocess(self, df, test_size):
         """Only focus on drug class SGLT and DPP
@@ -78,7 +73,6 @@ class ImputationPreprocessing:
             df : Preprocessed dataframe
             X_train, X_test, Y_train, Y_test : After train and test split
             X, Y : X and Y before train test split
-
         """
         
         variables = df.columns
@@ -102,13 +96,13 @@ class ImputationPreprocessing:
         df['smoking'] = df['smoking'].astype(float)
 
         # print the nan counts
-        self.get_nan_count(df)
+        get_nan_count(df)
         
         #delete columns with more than threshold NaN. get missing values < threshold feature name list
         missing_per = get_missing_val_percentage(df)
         
         for i in range(df.columns.shape[0]):
-            if missing_per[i] <= thresh: #setting the threshold as 40%
+            if missing_per.iloc[i] <= thresh: #setting the threshold as 40%
                 keep.append(variables[i])
             else :
                 rem.append(variables[i])
@@ -158,6 +152,17 @@ class ImputationPreprocessing:
         
         print('Shape of full data after selecting date range dates > 21 days', np.shape(df))
         
+        df['hba1c_bl_6m'] = df['hba1c_bl_6m'].apply(pd.to_numeric, downcast='float', errors='coerce')
+        df['eGFR'] = df['eGFR'].apply(pd.to_numeric, downcast='float', errors='coerce')
+    
+        # filter data based on valid baseline hba1c and eGFR values
+        criteria = (df['hba1c_bl_6m'] < 53) | (df['hba1c_bl_6m'] > 119) | (df['eGFR'] < 45)
+        print(f'\n Number of samples after the filteration of baseline hba1c and eGFR: {criteria.sum()}')
+        print('df shape before the filteration on valid baseline hba1c and eGFR values', df.shape)
+        # Invert the criteria to keep only the rows that do not meet any of the criteria
+        df = df[~criteria]
+        print('df shape after the filteration on valid baseline hba1c and eGFR values', df.shape)
+    
         # split data
         random.seed(SEED)
         # Save original data set
