@@ -3,28 +3,30 @@ import numpy as np
 import random
 import yaml
 import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from xgboost.sklearn import XGBRegressor
 
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import train_test_split
-from helpers import print_sample_count, get_features_kbest, outlier_detect, cross_val, get_scores
-from sklearn.impute import SimpleImputer
-from sklearn.ensemble import RandomForestRegressor
-from constants import X_TRAIN_PATH, COMMON_VARIABLE_PATH, BMI_PATH, SEED
+from constants import COMMON_VARIABLE_PATH, BMI_PATH, SEED, TRAIN_PATH, SGLT_VALUE, DPP_VALUE,\
+    ORIGINAL_DPP_VALUE, ORIGINAL_SGLT_VALUE
+from utils import preprocess, print_sample_count, outlier_detect, cross_val, get_scores
+    
 class ImputationBMI:
     
     def __init__(self):
         # Get the current script's directory
         self.script_directory = os.path.dirname(os.path.abspath(__file__))
 
-        self.file_path_X_train = os.path.join(self.script_directory, X_TRAIN_PATH)
+        self.file_path_X_train = os.path.join(self.script_directory, TRAIN_PATH)
         self.file_path_bmi_imputed = os.path.join(self.script_directory, BMI_PATH)
-        self.file_path_common_variables = os.path.join(self.script_directory, COMMON_VARIABLE_PATH)
+        self.file_path_common_variables = os.path.abspath(os.path.join(self.script_directory, COMMON_VARIABLE_PATH))
         
         # Read common variables from a YAML file
         with open(self.file_path_common_variables, 'r') as file:
             self.common_data = yaml.safe_load(file)
 
         self.response_variable_list = ['bmi_12m']
+        self.target_variable = 'bmi_12m'
         self.correlated_variables = self.common_data['correlated_variables']
         
     def read_data(self):
@@ -34,124 +36,32 @@ class ImputationBMI:
             df: dataframe
         """
         df = pd.read_csv(self.file_path_X_train, sep = ',',decimal = '.', encoding = 'utf-8', engine ='python', index_col=0)
-    
         return df
     
-    def preprocess(self, df, test_size):
+    def preprocess_data(self, df):
+        variables_to_drop = ['ldl_12m', 'hba1c_12m', 'hdl_12m', 'days_ldl', 'init_year']
+        df, X_train, X_test, Y_train, Y_test, X, Y, scaler, df_missing_val, df_missing_val_original, df_original = preprocess(df, 0.25, self.target_variable)
+        df = df.drop(variables_to_drop, axis=1)
+        X_train = X_train.drop(variables_to_drop, axis=1)
+        X_test = X_test.drop(variables_to_drop, axis=1)
         
-        """Further preprocess data (Focusing response variable as BMI)
-
-        Args:
-            df : dataframe
-            test_size (float): size of the test data. This use to split the data into training and test dataset.
-        
-        Returns: 
-            df : Preprocessed dataframe
-            X_train, X_test, Y_train, Y_test : After train and test split
-            X, Y : X and Y before train test split
-            scaler : Scalar object. Used later to descale
-            df_missing_val, df_missing_val_original : dataframes with missing values of bmi_12m
-            df_original : original dataframe
-        """
-        
-        print('Shape of data :', np.shape(df))
-        
-        df_missing_val = df[df['bmi_12m'].isnull()]
-        df_missing_val_original = df_missing_val.copy()
-        
-        # remove rows with missing 'response variable'
-        df = df.dropna(how='any', subset = self.response_variable_list)
-        df_original = df.copy()
-        print('Shape of data after excluding missing response:', np.shape(df))
-        
-        date_cols = ['date_hba_bl_6m','date_ldl_bl','date_bmi_bl','date_hdl_bl', 'date_12m', 'date_n1',
-                    'date_ldl_12m', 'date_bmi_12m', 'date_hdl_12m']
-
-        df = df.drop(date_cols, axis=1)
-        df_missing_val = df_missing_val.drop(date_cols, axis=1)
-        
-        # select time interval
-        start = 21
-        end = 365 #426
-        df = df[(df['days_hba1c'] >= start) & (df['days_hba1c'] <= end)]
-        print('Shape of full data after selecting date range dates > 21 days', np.shape(df))
-        
-        df = df.astype(float)
-        df_missing_val = df_missing_val.astype(float)
-        
-        # Remove samples with bmi greater than 50
-        bmi_greater_50= 50  # Replace this with your desired threshold
-        mask_bmi = df['bmi_12m'] > bmi_greater_50  # Replace 'column_name' with the actual column you want to filter
-        df = df.drop(df[mask_bmi].index, axis = 0)
-
-        # split data
-        random.seed(SEED)
-        # Save original data set
-        original = df
-        Y = df[self.response_variable_list]
-        X = df.drop(self.response_variable_list, axis=1)
-        random.seed(SEED)
-        
-        # Split into training and testing sets
-        X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=test_size, random_state=123)
-        
-        df_missing_val = df_missing_val.drop(self.response_variable_list, axis=1)
-        
-        # data imputation
-        original_X_train = X_train
-        original_X_test = X_test
-        original_df_missing_val = df_missing_val
-        random.seed(SEED)
-        
-        # Impute all the other features, Except response variable
-        imputer = SimpleImputer(missing_values=np.nan, strategy = "most_frequent")
-        X_train = imputer.fit_transform(X_train)
-        X_test = imputer.transform(X_test)
-        df_missing_val = imputer.transform(df_missing_val)
-        
-        X_train = pd.DataFrame(X_train, columns = original_X_train.columns, index=original_X_train.index)
-        X_test = pd.DataFrame(X_test, columns = original_X_train.columns, index=original_X_test.index)
-        df_missing_val = pd.DataFrame(df_missing_val, columns = original_df_missing_val.columns, index=original_df_missing_val.index)
-        
-        columns_to_skip_normalization = []
-        # List of columns to normalize
-        columns_to_normalize = [col for col in X_train.columns if col not in columns_to_skip_normalization]
-
-        # scale data
-        scaler = MinMaxScaler()
-        
-        X_train[columns_to_normalize] = scaler.fit_transform(X_train[columns_to_normalize])
-        X_test[columns_to_normalize] = scaler.transform(X_test[columns_to_normalize])
-        df_missing_val[columns_to_normalize] = scaler.transform(df_missing_val[columns_to_normalize])
-        
-        return df, X_train, X_test, Y_train, Y_test, X, Y, scaler, df_missing_val, df_missing_val_original, df_original
+        print_sample_count(df, ORIGINAL_DPP_VALUE, ORIGINAL_SGLT_VALUE, label = 'preprocessed')
+        print_sample_count(X_train, DPP_VALUE, SGLT_VALUE, label = 'training')
+        print_sample_count(X_test, DPP_VALUE, SGLT_VALUE, label = 'test')
     
-    def feature_selection(self, df, X_train, Y_train, X_test):
-        X_test_ = pd.DataFrame(X_test)
-        X_train_ = pd.DataFrame(X_train)
-
-        X_train = X_train.drop(['init_year'], axis = 1)
-        X_test = X_test.drop(['init_year'], axis = 1)
-        
-        # print drug sample count in preprocessed data, training data and test data
-        print_sample_count(df, X_train_, X_test_)
-        
         random.seed(SEED)
         
-        feats = get_features_kbest(X_train, Y_train,10)
-        selected_features=feats
-                
+        selected_features = ['sp', 'ika', 't2d_dur_y', 'pkrea_luo', 'bmi', 'dpp4', 'hdl', 'trigly', 'obese'] # kbest 10
+            
         X_train = X_train[selected_features]
         X_test = X_test[selected_features]
-        number_of_features = len(selected_features)
-        print(selected_features)
-        return X_train, X_test, selected_features
-    
-    def remove_outliers(self, X_train, Y_train, X_test, Y_test):
-        
+        return df, X_train, X_test, Y_train, Y_test, df_missing_val, df_missing_val_original, df_original, selected_features
+
+    def remove_outliers(self, X_train, X_test, Y_train, Y_test):
+        ################# OUTLIER ################
         print('Shape of training data before removing outliers:', np.shape(X_train))
         print('Shape of test data before removing outliers:', np.shape(X_test))
-        
+            
         out_train, out_test = outlier_detect(X_train, Y_train, X_test, Y_test)
         
         train_ = X_train.copy()
@@ -173,23 +83,30 @@ class ImputationBMI:
         print('Shape of test data after removing outliers:', np.shape(X_test))
         
         return X_train, X_test, Y_train, Y_test
-
-        
+    
     def model_training(self, X_train, Y_train, X_test, Y_test):
         train = X_train.copy()
         train[self.response_variable_list] = Y_train[self.response_variable_list].copy()
         
         model_results = {}
-        model_results_drugs = {}
         
-        model = RandomForestRegressor(n_estimators=150, max_depth=10, random_state=123)
+        model = XGBRegressor(
+                n_estimators=70, 
+                eta=0.06, 
+                subsample=0.9, 
+                colsample_bytree=0.8,
+                alpha=0.04,
+                max_depth = 15,
+                max_leaves = 5,
+                learning_rate =0.1
+            )
         
-        model = cross_val(model, train, X_test, Y_test, X_train, Y_train, self.response_variable_list, n_splits=3)
+        model = cross_val(model, train , X_train, Y_train, self.response_variable_list)
+        # fit the model
         model.fit(X_train, Y_train)
-        # make a prediction
-        yhat = model.predict(X_test)
+        
         # summarize prediction
-        original_data_pred, model_results, model_results_drugs_ori, score_ori = get_scores(model, X_test, Y_test, X_train, Y_train, model_results, model_results_drugs)
+        original_data_pred, model_results, model_results_drugs_ori, score_ori = get_scores(model, X_test, Y_test, X_train, Y_train)
         return original_data_pred, model_results, model_results_drugs_ori, score_ori, model
 
     def missing_value_prediction(self, model, df_missing, df_original, selected_features, df_missing_val_original):
@@ -207,11 +124,11 @@ class ImputationBMI:
 if __name__ == "__main__":
     imputeBMI = ImputationBMI()
     df = imputeBMI.read_data()
-    df, X_train, X_test, Y_train, Y_test, X, Y, scaler, df_missing_val, df_missing_val_original, df_original = imputeBMI.preprocess(df, 0.25)
+    df, X_train, X_test, Y_train, Y_test, df_missing_val, df_missing_val_original, df_original, selected_features = imputeBMI.preprocess_data(df)
     print('df_missing_val shape : ', df_missing_val.shape)
-    X_train, X_test, selected_features = imputeBMI.feature_selection(df, X_train, Y_train, X_test)
-    X_train, X_test, Y_train, Y_test = imputeBMI.remove_outliers(X_train, Y_train, X_test, Y_test)
+    X_train, X_test, Y_train, Y_test = imputeBMI.remove_outliers(X_train, X_test, Y_train, Y_test)
     original_data_pred, model_results, model_results_drugs_ori, score_ori, model = imputeBMI.model_training(X_train, Y_train, X_test, Y_test)
+    
     imputeBMI.missing_value_prediction(model, df_missing_val, df_original, selected_features, df_missing_val_original)
     
     

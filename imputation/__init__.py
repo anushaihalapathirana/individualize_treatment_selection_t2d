@@ -4,8 +4,8 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from constants import X_TRAIN_PATH, X_TEST_PATH, BMI_PATH, HDL_PATH, LDL_PATH, HBA1C_PATH, \
-    TESTING_DATA_PATH, IMPUTED_TRAINING_DATA_PATH
+from constants import TRAIN_PATH, TEST_PATH, BMI_PATH, HDL_PATH, LDL_PATH, HBA1C_PATH, \
+    TRAIN_PATH_IMPUTED, TEST_PATH_IMPUTED
 from preprocess import ImputationPreprocessing
 from hdl import ImputationHDL
 from ldl import ImputationLDL
@@ -18,16 +18,16 @@ class Main():
         # Get the current script's directory
         self.script_directory = os.path.dirname(os.path.abspath(__file__))
 
-        self.file_path_X_train = os.path.join(self.script_directory, X_TRAIN_PATH)
-        self.file_path_X_test = os.path.join(self.script_directory, X_TEST_PATH)
+        self.file_path_X_train = os.path.join(self.script_directory, TRAIN_PATH)
+        self.file_path_X_test = os.path.join(self.script_directory, TEST_PATH)
         
         self.file_path_bmi = os.path.join(self.script_directory, BMI_PATH)
         self.file_path_hdl = os.path.join(self.script_directory, HDL_PATH)
         self.file_path_ldl = os.path.join(self.script_directory, LDL_PATH)
         self.file_path_hba1c = os.path.join(self.script_directory, HBA1C_PATH)
         
-        self.file_path_imputed_train = os.path.join(self.script_directory, IMPUTED_TRAINING_DATA_PATH)
-        self.file_path_imputed_test = os.path.join(self.script_directory, TESTING_DATA_PATH)
+        self.file_path_imputed_train = os.path.join(self.script_directory, TRAIN_PATH_IMPUTED)
+        self.file_path_imputed_test = os.path.join(self.script_directory, TEST_PATH_IMPUTED)
         
     def impute_data(self):
 
