@@ -85,7 +85,7 @@ def get_dfs(df_orginal):
     return df_orginal
 
 
-def preprocess(df, test_size, target_variable):
+def preprocess(df, test_size, target_variable, variables_to_drop):
     
     """Further preprocess data (Focusing response variable as BMI)
 
@@ -138,11 +138,17 @@ def preprocess(df, test_size, target_variable):
         bmi_greater_less_5= 50 
         mask_bmi = df[target_variable] > bmi_greater_less_5  
         df = df.drop(df[mask_bmi].index, axis = 0)
+        
     
     if (target_variable == 'hdl_12m'):
         hdl_greater_than_5= 2.5  
         mask_hdl = df[target_variable] > hdl_greater_than_5  
         df = df.drop(df[mask_hdl].index, axis = 0)
+        
+    
+    # drop other response variables
+    df = df.drop(variables_to_drop, axis=1)
+    df_missing_val = df_missing_val.drop(variables_to_drop, axis = 1)
     
     # split data
     random.seed(42)
@@ -185,6 +191,7 @@ def preprocess(df, test_size, target_variable):
     X_train[columns_to_normalize] = scaler.fit_transform(X_train[columns_to_normalize])
     X_test[columns_to_normalize] = scaler.transform(X_test[columns_to_normalize])
     df_missing_val[columns_to_normalize] = scaler.transform(df_missing_val[columns_to_normalize])
+    
     
     return df, X_train, X_test, Y_train, Y_test, X, Y, scaler, df_missing_val, df_missing_val_original, df_original
  

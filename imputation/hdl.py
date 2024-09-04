@@ -30,10 +30,7 @@ class ImputationHDL:
     
     def preprocess_data(self, df):
         variables_to_drop = ['ldl_12m', 'hba1c_12m', 'bmi_12m', 'days_ldl', 'init_year']
-        df, X_train, X_test, Y_train, Y_test, X, Y, scaler, df_missing_val, df_missing_val_original, df_original = preprocess(df, 0.25, self.target_variable)
-        df = df.drop(variables_to_drop, axis=1)
-        X_train = X_train.drop(variables_to_drop, axis=1)
-        X_test = X_test.drop(variables_to_drop, axis=1)
+        df, X_train, X_test, Y_train, Y_test, X, Y, scaler, df_missing_val, df_missing_val_original, df_original = preprocess(df, 0.25, self.target_variable, variables_to_drop)
     
         random.seed(SEED)
         

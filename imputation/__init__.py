@@ -5,12 +5,13 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from constants import TRAIN_PATH, TEST_PATH, BMI_PATH, HDL_PATH, LDL_PATH, HBA1C_PATH, \
-    TRAIN_PATH_IMPUTED, TEST_PATH_IMPUTED
+    TRAIN_PATH_WO_LDL_IMPUTATION, TEST_PATH_WO_LDL_IMPUTATION
 from preprocess import ImputationPreprocessing
 from hdl import ImputationHDL
 from ldl import ImputationLDL
 from hba1c import ImputationHbA1c
 from bmi import ImputationBMI
+from utils import get_dfs, read_data, missing_value_prediction
 
 class Main():
 
@@ -26,8 +27,13 @@ class Main():
         self.file_path_ldl = os.path.join(self.script_directory, LDL_PATH)
         self.file_path_hba1c = os.path.join(self.script_directory, HBA1C_PATH)
         
-        self.file_path_imputed_train = os.path.join(self.script_directory, TRAIN_PATH_IMPUTED)
-        self.file_path_imputed_test = os.path.join(self.script_directory, TEST_PATH_IMPUTED)
+        # Define the relative path to the CSV file from the script's directory
+        relative_path_to_impute_train_data_wo_ldl = os.path.join("..", TRAIN_PATH_WO_LDL_IMPUTATION)
+        relative_path_to_impute_test_data_wo_ldl = os.path.join("..", TEST_PATH_WO_LDL_IMPUTATION)
+        
+        # Get the absolute path to the CSV file
+        self.file_path_imputed_train = os.path.abspath(os.path.join(self.script_directory, relative_path_to_impute_train_data_wo_ldl))
+        self.file_path_imputed_test = os.path.abspath(os.path.join(self.script_directory, relative_path_to_impute_test_data_wo_ldl))
         
     def impute_data(self):
 
@@ -36,42 +42,34 @@ class Main():
         df, X_train, X_test, Y_train, Y_test, X, Y = imp.preprocess(df, 0.25)
         
         imputeBMI = ImputationBMI()
-        df = imputeBMI.read_data()
-        df, X_train, X_test, Y_train, Y_test, X, Y, scaler, df_missing_val, df_missing_val_original, df_original = imputeBMI.preprocess(df, 0.25)
+        df = read_data(imputeBMI.file_path_X_train)
+        df, X_train, X_test, Y_train, Y_test, df_missing_val, df_missing_val_original, df_original, selected_features = imputeBMI.preprocess_data(df)
         print('df_missing_val shape : ', df_missing_val.shape)
-        X_train, X_test, selected_features = imputeBMI.feature_selection(df, X_train, Y_train, X_test)
-        X_train, X_test, Y_train, Y_test = imputeBMI.remove_outliers(X_train, Y_train, X_test, Y_test)
         original_data_pred, model_results, model_results_drugs_ori, score_ori, model = imputeBMI.model_training(X_train, Y_train, X_test, Y_test)
-        imputeBMI.missing_value_prediction(model, df_missing_val, df_original, selected_features, df_missing_val_original)
-        
-        
-        imputeHDL = ImputationHDL()
-        df = imputeHDL.read_data()
-        df, X_train, X_test, Y_train, Y_test, X, Y, scaler, df_missing_val, df_missing_val_original, df_original = imputeHDL.preprocess(df, 0.25)
-        print('df_missing_val shape : ', df_missing_val.shape)
-        X_train, X_test, selected_features = imputeHDL.feature_selection(df, X_train, Y_train, X_test)
-        X_train, X_test, Y_train, Y_test = imputeHDL.remove_outliers(X_train, Y_train, X_test, Y_test)
-        original_data_pred, model_results, model_results_drugs_ori, score_ori, model = imputeHDL.model_training(X_train, Y_train, X_test, Y_test)
-        imputeHDL.missing_value_prediction(model, df_missing_val, df_original, selected_features, df_missing_val_original)
-        
+        missing_value_prediction(model, df_missing_val, df_original, selected_features, df_missing_val_original, imputeBMI.file_path_bmi_imputed, 'bmi_12m')
+    
         imputeHba1c = ImputationHbA1c()
-        df = imputeHba1c.read_data()
-        df, X_train, X_test, Y_train, Y_test, X, Y, scaler, df_missing_val, df_missing_val_original, df_original = imputeHba1c.preprocess(df, 0.25)
+        df = read_data(imputeHba1c.file_path_X_train)
+        df, X_train, X_test, Y_train, Y_test, df_missing_val, df_missing_val_original, df_original, selected_features = imputeHba1c.preprocess_data(df)
         print('df_missing_val shape : ', df_missing_val.shape)
-        X_train, X_test, selected_features = imputeHba1c.feature_selection(df, X_train, Y_train, X_test)
-        X_train, X_test, Y_train, Y_test = imputeHba1c.remove_outliers(X_train, Y_train, X_test, Y_test)
         original_data_pred, model_results, model_results_drugs_ori, score_ori, model = imputeHba1c.model_training(X_train, Y_train, X_test, Y_test)
-        imputeHba1c.missing_value_prediction(model, df_missing_val, df_original, selected_features, df_missing_val_original)
-        
+        missing_value_prediction(model, df_missing_val, df_original, selected_features, df_missing_val_original, imputeHba1c.file_path_hba1c_imputed, 'hba1c_12m')
+    
+        imputeHDL = ImputationHDL()
+        df = read_data(imputeHDL.file_path_X_train)
+        df, X_train, X_test, Y_train, Y_test, df_missing_val, df_missing_val_original, df_original, selected_features = imputeHDL.preprocess_data(df)
+        print('df_missing_val shape : ', df_missing_val.shape)
+        original_data_pred, model_results, model_results_drugs_ori, score_ori, model = imputeHDL.model_training(X_train, Y_train, X_test, Y_test)
+        missing_value_prediction(model, df_missing_val, df_original, selected_features, df_missing_val_original, imputeHDL.file_path_hdl_imputed, 'hdl_12m')
+    
         # imputeLDL = ImputationLDL()
-        # df = imputeLDL.read_data()
-        # df, X_train, X_test, Y_train, Y_test, X, Y, scaler, df_missing_val, df_missing_val_original, df_original = imputeLDL.preprocess(df, 0.25)
+        # df = read_data(imputeLDL.file_path_X_train)
+        # df, X_train, X_test, Y_train, Y_test, df_missing_val, df_missing_val_original, df_original, selected_features = imputeLDL.preprocess_data(df)
         # print('df_missing_val shape : ', df_missing_val.shape)
-        # X_train, X_test, selected_features = imputeLDL.feature_selection(df, X_train, Y_train, X_test)
-        # X_train, X_test, Y_train, Y_test = imputeLDL.remove_outliers(X_train, Y_train, X_test, Y_test)
         # original_data_pred, model_results, model_results_drugs_ori, score_ori, model = imputeLDL.model_training(X_train, Y_train, X_test, Y_test)
-        # imputeLDL.missing_value_prediction(model, df_missing_val, df_original, selected_features, df_missing_val_original)
-        
+        # missing_value_prediction(model, df_missing_val, df_original, selected_features, df_missing_val_original, imputeLDL.file_path_ldl_imputed, 'ldl_12m')
+    
+       
     def delete_files(self):
         # Delete all the csv files
         file_paths_to_delete = [self.file_path_ldl, self.file_path_hba1c, self.file_path_hdl, self.file_path_bmi,
@@ -84,28 +82,10 @@ class Main():
             else:
                 print(f"File {file_path} does not exist.")
 
-
-    def get_dfs(self, df_orginal):
-    
-            df_orginal = df_orginal[
-                        (df_orginal['drug_class'] == 3) |
-                        (df_orginal['drug_class'] == 4) ]
-
-            # replace ' ' as NaN
-            df_orginal = df_orginal.replace(' ', np.NaN)
-            print('Shape of data after removing other drug types:', np.shape(df_orginal))
-
-                # filter by bmi
-            df_orginal['bmi'] = df_orginal['bmi'].astype(float)
-            df_orginal['sp'] = df_orginal['sp'].astype(int)
-            df_orginal['ika'] = df_orginal['ika'].astype(float)
-            df_orginal['smoking'] = df_orginal['smoking'].astype(float)
-            return df_orginal
-
     def combine_data(self):
-        df_X_train = pd.read_csv(self.file_path_X_train, sep = ',',decimal = '.', encoding = 'utf-8', engine ='python',index_col=0)
-        df_X_test = pd.read_csv(self.file_path_X_test, sep = ',',decimal = '.', encoding = 'utf-8', engine ='python',index_col=0)
-
+        df_X_train = read_data(self.file_path_X_train)
+        df_X_test = read_data(self.file_path_X_test)
+        
         # List of file paths to read
         file_paths = [self.file_path_ldl, self.file_path_hba1c, self.file_path_hdl, self.file_path_bmi]
 
@@ -119,21 +99,21 @@ class Main():
         for file_name in file_paths:
             if os.path.exists(file_name):
                 if 'ldl' in file_name:
-                    df_ldl = pd.read_csv(file_name, sep=',', decimal='.', encoding='utf-8', engine='python', index_col=0)
+                    df_ldl = read_data(file_name)
                 elif 'hba1c' in file_name:
-                    df_hba1c = pd.read_csv(file_name, sep=',', decimal='.', encoding='utf-8', engine='python', index_col=0)
+                    df_hba1c = read_data(file_name)
                 elif 'hdl' in file_name:
-                    df_hdl = pd.read_csv(file_name, sep=',', decimal='.', encoding='utf-8', engine='python', index_col=0)
+                    df_hdl = read_data(file_name)
                 elif 'bmi' in file_name:
-                    df_bmi = pd.read_csv(file_name, sep=',', decimal='.', encoding='utf-8', engine='python', index_col=0)
-            else:
+                    df_bmi = read_data(file_name)
+                    
                 print(f"File {file_name} does not exist.")
                 
         print("original shape df_X_train: ", np.shape(df_X_train))
         print("original shape df_X_test: ", np.shape(df_X_test))
 
-        df_X_train = self.get_dfs(df_X_train)
-        df_X_test = self.get_dfs(df_X_test)
+        df_X_train = get_dfs(df_X_train)
+        df_X_test = get_dfs(df_X_test)
 
         print(df_bmi.shape)
         print(df_hba1c.shape)
