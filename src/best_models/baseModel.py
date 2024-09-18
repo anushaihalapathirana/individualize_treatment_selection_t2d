@@ -28,55 +28,133 @@ from constants import COMMON_VARIABLE_PATH, SEED, TEST_PATH_WO_LDL_IMPUTATION, T
 warnings.filterwarnings('ignore')
 
 class BaseModel:
-    def __init__(self, feature_list, model, isVRModel = False):
-        # Get the current script's directory
-        self.script_directory = os.path.dirname(os.path.abspath(__file__))
-        
-        # Define the relative path to the CSV file from the script's directory
-        relative_path_to_impute_train_data_wo_ldl = os.path.join("../../", TRAIN_PATH_WO_LDL_IMPUTATION)
-        relative_path_to_impute_test_data_wo_ldl = os.path.join("../../", TEST_PATH_WO_LDL_IMPUTATION)
-        relative_path_to_common_variable_file = os.path.join("../", COMMON_VARIABLE_PATH)
-        relative_path_to_predicted_drug_file = os.path.join("../../", PREDICTED_DRUG_CLASS_FILE_LOCATION)
-        relative_path_to_preprocessed_data_file = os.path.join("../../", PREPROCESSED_DATA_FILE_LOCATION)
-        relative_path_to_feature_importance_df_file = os.path.join("../../", FEATURE_IMPORTANCE_DF_LOCATION)
-        
-        
-        # Define the relative path to the image files from the script's directory
-        relative_path_to_actual_vs_pred_scatter_plot = os.path.join("../../", SCATTER_PLOT_ACTUAL_VS_PRED)
-        relative_path_to_shap_sp_hba1c = os.path.join("../../", SHAP_SUMMARY_PLOT_HBA1C)
-        relative_path_to_shap_sp_ldl = os.path.join("../../", SHAP_SUMMARY_PLOT_LDL)
-        relative_path_to_shap_sp_hdl = os.path.join("../../", SHAP_SUMMARY_PLOT_HDL)
-        relative_path_to_shap_sp_bmi = os.path.join("../../", SHAP_SUMMARY_PLOT_BMI)
-        
-        # Get the absolute path to the CSV file
-        self.file_path_train_data = os.path.abspath(os.path.join(self.script_directory, relative_path_to_impute_train_data_wo_ldl))
-        self.file_path_test_data = os.path.abspath(os.path.join(self.script_directory, relative_path_to_impute_test_data_wo_ldl))
-        self.file_path_common_variables = os.path.abspath(os.path.join(self.script_directory, relative_path_to_common_variable_file))
-        self.file_path_predicted_drug_file = os.path.abspath(os.path.join(self.script_directory, relative_path_to_predicted_drug_file))
-        self.file_path_preprocessed_data_file = os.path.abspath(os.path.join(self.script_directory, relative_path_to_preprocessed_data_file))
-        self.file_path_feature_importance_df_file = os.path.abspath(os.path.join(self.script_directory, relative_path_to_feature_importance_df_file))
-        
-        # Get the absolute path to the image files
-        self.path_to_scatter_plot_actual_vs_pred = os.path.abspath(os.path.join(self.script_directory, relative_path_to_actual_vs_pred_scatter_plot))
-        self.path_to_shap_sp_hba1c = os.path.abspath(os.path.join(self.script_directory, relative_path_to_shap_sp_hba1c))
-        self.path_to_shap_sp_ldl = os.path.abspath(os.path.join(self.script_directory, relative_path_to_shap_sp_ldl))
-        self.path_to_shap_sp_hdl = os.path.abspath(os.path.join(self.script_directory, relative_path_to_shap_sp_hdl))
-        self.path_to_shap_sp_bmi = os.path.abspath(os.path.join(self.script_directory, relative_path_to_shap_sp_bmi))
-        
-        # Read common variables from a YAML file
-        with open(self.file_path_common_variables, 'r') as file:
-            self.common_data = yaml.safe_load(file)
+    """
+    This class represents the base model
+    """
 
-        self.response_variable_list = self.common_data['response_variable_list']
-        self.correlated_variables = self.common_data['correlated_variables']
-        self.items = ['drug_class']
-        self.isshap = False
-        self.feature_list = feature_list
-        self.model = model
-        self.isVRModel = isVRModel
+    def __init__(self, feature_list, model, isVRModel = False):
+        """
+        Initializes an instance of the class by setting up file paths and loading common variables.
+
+        Parameters:
+            feature_list (list): A list of features to be used by the model.
+            model (object): The model instance that will be used for training and prediction.
+            isVRModel (bool, optional): A flag indicating whether the model is a VotingRegresson model. Defaults to False.
+
+        Attributes:
+            script_directory (str): The directory of the current script.
+            file_path_train_data (str): Absolute path to the training data CSV file.
+            file_path_test_data (str): Absolute path to the test data CSV file.
+            file_path_common_variables (str): Absolute path to the YAML file containing common variables.
+            file_path_predicted_drug_file (str): Absolute path to the CSV file for predicted drug classes.
+            file_path_preprocessed_data_file (str): Absolute path to the preprocessed data file.
+            file_path_feature_importance_df_file (str): Absolute path to the file containing feature importance data.
+            path_to_scatter_plot_actual_vs_pred (str): Absolute path to the scatter plot image of actual vs predicted values.
+            path_to_shap_sp_hba1c (str): Absolute path to the SHAP summary plot image for HbA1c.
+            path_to_shap_sp_ldl (str): Absolute path to the SHAP summary plot image for LDL.
+            path_to_shap_sp_hdl (str): Absolute path to the SHAP summary plot image for HDL.
+            path_to_shap_sp_bmi (str): Absolute path to the SHAP summary plot image for BMI.
+            common_data (dict): Data loaded from the YAML file, including response variables and correlated variables.
+            response_variable_list (list): List of response variables extracted from common_data.
+            correlated_variables (list): List of correlated variables extracted from common_data.
+            items (list): A list containing the items to include in selected features.
+            isshap (bool): A flag indicating whether SHAP (SHapley Additive exPlanations) values are to be calculated. 
+                          Defaults to False, since it takes time to run.
+
+        Raises:
+            FileNotFoundError: If the specified file paths cannot be found.
+            yaml.YAMLError: If there is an error reading the YAML file.
+        """
+        
+        try:
+            # Get the current script's directory
+            self.script_directory = os.path.dirname(os.path.abspath(__file__))
+
+            # Define the relative paths
+            relative_paths = {
+                'train_data': os.path.join("../../", TRAIN_PATH_WO_LDL_IMPUTATION),
+                'test_data': os.path.join("../../", TEST_PATH_WO_LDL_IMPUTATION),
+                'common_variables': os.path.join("../", COMMON_VARIABLE_PATH),
+                'predicted_drug': os.path.join("../../", PREDICTED_DRUG_CLASS_FILE_LOCATION),
+                'preprocessed_data': os.path.join("../../", PREPROCESSED_DATA_FILE_LOCATION),
+                'feature_importance': os.path.join("../../", FEATURE_IMPORTANCE_DF_LOCATION),
+                'scatter_plot': os.path.join("../../", SCATTER_PLOT_ACTUAL_VS_PRED),
+                'shap_hba1c': os.path.join("../../", SHAP_SUMMARY_PLOT_HBA1C),
+                'shap_ldl': os.path.join("../../", SHAP_SUMMARY_PLOT_LDL),
+                'shap_hdl': os.path.join("../../", SHAP_SUMMARY_PLOT_HDL),
+                'shap_bmi': os.path.join("../../", SHAP_SUMMARY_PLOT_BMI),
+            }
+
+            # Get the absolute paths
+            self.file_path_train_data = os.path.abspath(os.path.join(self.script_directory, relative_paths['train_data']))
+            self.file_path_test_data = os.path.abspath(os.path.join(self.script_directory, relative_paths['test_data']))
+            self.file_path_common_variables = os.path.abspath(os.path.join(self.script_directory, relative_paths['common_variables']))
+            self.file_path_predicted_drug_file = os.path.abspath(os.path.join(self.script_directory, relative_paths['predicted_drug']))
+            self.file_path_preprocessed_data_file = os.path.abspath(os.path.join(self.script_directory, relative_paths['preprocessed_data']))
+            self.file_path_feature_importance_df_file = os.path.abspath(os.path.join(self.script_directory, relative_paths['feature_importance']))
+            self.path_to_scatter_plot_actual_vs_pred = os.path.abspath(os.path.join(self.script_directory, relative_paths['scatter_plot']))
+            self.path_to_shap_sp_hba1c = os.path.abspath(os.path.join(self.script_directory, relative_paths['shap_hba1c']))
+            self.path_to_shap_sp_ldl = os.path.abspath(os.path.join(self.script_directory, relative_paths['shap_ldl']))
+            self.path_to_shap_sp_hdl = os.path.abspath(os.path.join(self.script_directory, relative_paths['shap_hdl']))
+            self.path_to_shap_sp_bmi = os.path.abspath(os.path.join(self.script_directory, relative_paths['shap_bmi']))
+
+            # Read common variables from a YAML file
+            try:
+                with open(self.file_path_common_variables, 'r') as file:
+                    self.common_data = yaml.safe_load(file)
+            except FileNotFoundError:
+                raise FileNotFoundError(f"Common variables file not found: {self.file_path_common_variables}")
+            except yaml.YAMLError as e:
+                raise yaml.YAMLError(f"Error reading YAML file: {e}")
+
+            # Initialize other attributes
+            self.response_variable_list = self.common_data['response_variable_list']
+            self.correlated_variables = self.common_data['correlated_variables']
+            self.items = ['drug_class']
+            self.isshap = False
+            self.feature_list = feature_list
+            self.model = model
+            self.isVRModel = isVRModel
+
+        except Exception as e:
+            print(f"An error occurred during initialization: {e}")
+            raise
         
     def run(self, algo, i, df_X_train, df_X_test):
         
+        """
+        Runs the model training and evaluation process with feature selection (not in this file), outlier removal, and model training.
+
+        This method preprocesses the training and testing data, performs feature selection based on the specified algorithm,
+        removes outliers, and trains the model using the selected features. It then returns the results of the model training.
+
+        Parameters:
+            algo (str): The feature selection algorithm to use. Options are:
+                - 'kbest': Select features using the k-best method.
+                - 'relieff': Select features using the ReliefF method.
+                - 'refMulti': Select features using the REF Multi-output method.
+                - 'ref': Select features using the REF method.
+                - Any other value: Uses the predefined feature list. - Default option in this file
+            i (int): The number of features to select or the threshold for feature selection algorithms - Not use in this file
+            df_X_train (pd.DataFrame): The training data.
+            df_X_test (pd.DataFrame): The testing data.
+
+        Returns:
+            tuple: A tuple containing:
+                - model_results (dict): A dictionary of model results including performance metrics.
+                - model (object): The trained model.
+                - X_test_selected (DataFrame): The testing data features after feature selection and outlier removal.
+                - Y_test (DataFrame): The testing data target variables after outlier removal.
+                - X_train_selected (DataFrame): The training data features after feature selection and outlier removal.
+                - Y_train (DataFrame): The training data target variables after outlier removal.
+                - train (DataFrame): The training data with selected features and target variables after outlier removal.
+                - scaler (object): The scaler used for data normalization.
+                - X_test_original (DataFrame): The original testing data features after outlier removal.
+                - selected_list (list): The list of selected features.
+                - X_test_before_scale (DataFrame): The testing data features before scaling and after outlier removal.
+                - X_train_original (DataFrame): The original training data features after outlier removal.
+        """
+    
         X_train_ = preprocess(df_X_train, self.response_variable_list)
         X_test_ = preprocess(df_X_test, self.response_variable_list)
         df, X_train, X_test, Y_train, Y_test, X, Y, scaler, X_test_before_scale = get_test_train_data(X_train_, X_test_, self.response_variable_list)
@@ -135,9 +213,6 @@ class BaseModel:
         print('Shape of test data before removing outliers:', np.shape(X_test_selected))
         
         out_train, out_test = outlier_detect(X_train_selected, Y_train, X_test_selected, Y_test)
-        #out_train=[14, 415, 744, 829, 916, 967, 1386, 279, 1225, 1332, 1656, 321, 426, 480, 779, 887, 1046, 1121, 1588, 82, 104, 359, 518, 847, 945, 978, 980, 1095, 1256, 1396, 1423, 1705]
-                #[14, 415, 744, 829, 916, 967, 1386, 279, 1225, 1656, 321, 426, 480, 779, 887, 945, 1046, 1180, 1588, 82, 98, 104, 359, 711, 847, 980, 1095, 1180, 1256, 1263, 1423, 1705]
-        #out_test= [6014, 1520]
         
         train_ = X_train_selected.copy()
         train_[self.response_variable_list] = Y_train.values
@@ -168,7 +243,6 @@ class BaseModel:
         train[self.response_variable_list] = Y_train.values
         
         random.seed(SEED)
-        #wrapper = MultiOutputRegressor(catboost)
         wrapper = RegressorChain(self.model, order=[0,1,2,3])
         
         models = wrapper 
@@ -176,9 +250,39 @@ class BaseModel:
         model_results, model = train_models(models, X_test_selected, Y_test, X_train_selected, Y_train, train, scaler, X_test_original, self.response_variable_list)
         return model_results, model, X_test_selected, Y_test, X_train_selected, Y_train, train, scaler, X_test_original, selected_list, X_test_before_scale, X_train_original
 
-    def print_model_results(self, df_X_train, df_X_test):
+    def execute_model(self, df_X_train, df_X_test):
+        
+        """
+        Executes the model training and evaluation process, prints the model performance results, and returns various data components.
+
+        This method calls the `run` method to perform model training and evaluation with a default ('defaukt') and number of features.
+        It then formats and prints the results in a tabular format and returns the results and relevant data components for further analysis.
+
+        Parameters:
+            df_X_train (DataFrame): The training data.
+            df_X_test (DataFrame): The testing data.
+
+        Returns:
+            tuple: A tuple containing:
+                - model_results (dict): A dictionary of model results including performance metrics for each model.
+                - model (object): The trained model.
+                - X_test (DataFrame): The testing data features after feature selection and outlier removal.
+                - Y_test (DataFrame): The testing data target variables after outlier removal.
+                - X_train (DataFrame): The training data features after feature selection and outlier removal.
+                - Y_train (DataFrame): The training data target variables after outlier removal.
+                - train (DataFrame): The training data with selected features and target variables after outlier removal.
+                - scaler (object): The scaler used for data normalization.
+                - X_test_original (DataFrame): The original testing data features after outlier removal.
+                - selected_list (list): The list of selected features.
+                - X_test_before_scale (DataFrame): The testing data features before scaling and after outlier removal.
+                - X_train_original (DataFrame): The original training data features after outlier removal.
+
+        Prints:
+            A formatted table displaying the model performance results, including the model names and their corresponding test R2 scores.
+        """
+    
         model_results, model, X_test, Y_test, X_train, Y_train, train, scaler, X_test_original, \
-        selected_list, X_test_before_scale, X_train_original = self.run('hc',8, df_X_train, df_X_test)
+        selected_list, X_test_before_scale, X_train_original = self.run('default',8, df_X_train, df_X_test)
         table = []
         for model_, score in model_results.items():
             table.append([model_, score])
@@ -192,6 +296,28 @@ class BaseModel:
 
     def plot_actual_pred(self, df, pred_, drug_class):
 
+        """
+        Plots observed vs. predicted values for multiple target features, with separate scatter plots for each target feature.
+        
+        This method creates subplots for each target feature and plots the observed values against the predicted values.
+        It also includes a regression line for each subplot to visualize the relationship between observed and predicted values.
+        Different colors are used to distinguish between different drug classes.
+
+        Parameters:
+            df (DataFrame): A DataFrame containing the observed values for each target feature. 
+                            Each column represents a different target feature.
+            pred_ (ndarray): A NumPy array containing the predicted values for each target feature.
+            drug_class (ndarray): A NumPy array indicating the drug class for each observation.
+                                    It is used to color-code the scatter plots.
+
+        Returns:
+            None
+
+        Notes:
+            - It uses a color scheme with 'blue' and 'maroon' for different drug classes and plots a regression line in black.
+            - The resulting plot is saved to the file path specified by `self.path_to_scatter_plot_actual_vs_pred` with high resolution.
+        """
+    
         # Number of target features
         num_targets = df.shape[1]
         # rearrange this names list if any changes to df response column order
@@ -243,6 +369,24 @@ class BaseModel:
         plt.show()
         
     def get_shap_values(self, model, X_train, X_test, selected_list):
+        """
+        Computes SHAP values for the given model to interpret its predictions.
+
+        This method uses the SHAP KernelExplainer to compute SHAP values for the specified model, 
+        providing insights into feature importance and how each feature contributes to the model's predictions.
+
+        Parameters:
+            model (object): The trained model for which SHAP values are to be computed. It should have a `predict` method that can be used by the SHAP explainer.
+            X_train (DataFrame): The training data used to initialize the SHAP explainer. This data is used to compute the SHAP values for the test data.
+            X_test (DataFrame): The testing data for which SHAP values will be computed. The `selected_list` specifies the subset of features to include in the SHAP calculation.
+            selected_list (list): A list of feature names that specifies which features to include when computing the SHAP values for `X_test`.
+
+        Returns:
+            tuple: A tuple containing:
+                - explainer (shap.KernelExplainer): The SHAP explainer instance used to compute the SHAP values.
+                - shap_values (list of np.ndarray): The computed SHAP values for the test data. 
+                            The list contains one array for each output of the model, representing the contribution of each feature to the model's prediction.
+        """
         explainer = shap.KernelExplainer(model=model.predict, data=X_train, link="identity")
         shap_values = explainer.shap_values(X=X_test[selected_list])
         return explainer, shap_values
@@ -354,7 +498,7 @@ class BaseModel:
         
         # print model performance
         model_results, model, X_test, Y_test, X_train, Y_train, train, scaler, X_test_original, \
-            selected_list, X_test_before_scale, X_train_original = self.print_model_results(df_X_train, df_X_test)
+            selected_list, X_test_before_scale, X_train_original = self.execute_model(df_X_train, df_X_test)
 
         # calculations for ensemble model
         save_data_for_ensemble(X_train_original, Y_train, X_test_original, Y_test, self.file_path_preprocessed_data_file)
