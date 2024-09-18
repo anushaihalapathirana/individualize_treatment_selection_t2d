@@ -27,8 +27,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from constants import COMMON_VARIABLE_PATH, SEED, TEST_PATH_WO_LDL_IMPUTATION,\
     TRAIN_PATH_WO_LDL_IMPUTATION, DPP_VALUE, SGLT_VALUE
 from helper import read_data, preprocess, get_test_train_data, get_features_kbest, get_features_ref,\
-    get_features_relieff, get_model_name, cross_val, get_scores, outlier_detect, pred_all,\
-    find_lowest_respponse_value, find_highest_respponse_value, get_features_ref_multiout,\
+    get_features_relieff, get_model_name, cross_val, get_scores, outlier_detect, predict_drug_classes, get_features_ref_multiout,\
     get_concordant_discordant, calculate_percentage_change, check_distribution
 
 class Train:
@@ -77,49 +76,6 @@ class Train:
         df_ = df_.drop(outliers_pred)
         df_act_ = df_act_.drop(outliers_act)
         return df_
-    
-    def predict_drug_classes(self, model, X_test, Y_train):
-        X = X_test.copy()
-        X_test_copy = X_test.copy()
-        X_test_copy['assigned_drug_hba1c'] = np.nan
-        X_test_copy['predicted_change_hba1c'] = np.nan
-        X_test_copy['assigned_drug_ldl'] = np.nan
-        X_test_copy['predicted_change_ldl'] = np.nan
-        X_test_copy['assigned_drug_hdl'] = np.nan
-        X_test_copy['predicted_change_hdl'] = np.nan
-        X_test_copy['assigned_drug_bmi'] = np.nan
-        X_test_copy['predicted_change_bmi'] = np.nan
-        
-        assigned_drug_class_list = [np.nan] * Y_train.shape[1]
-        max_change_list = [np.nan] * Y_train.shape[1]
-        
-        for index, row in X.iterrows():
-            drug_class = row['drug_class']
-
-            pred_original = model.predict(row.values[None])[0]
-            pred_sglt, pred_dpp = pred_all(model, row, drug_class) 
-
-            for j in range(Y_train.shape[1]):
-                if (Y_train.iloc[:,j].name == 'hdl_12m'):
-                    temp_max_change, temp_assigned_drug_class = find_highest_respponse_value(pred_sglt[j], pred_dpp[j])
-                else:
-                    temp_max_change, temp_assigned_drug_class = find_lowest_respponse_value(pred_sglt[j], pred_dpp[j])
-                
-                max_change_list[j] = temp_max_change
-                assigned_drug_class_list[j] = temp_assigned_drug_class
-                
-            X_test_copy.at[index, 'assigned_drug_hba1c'] = assigned_drug_class_list[0]
-            X_test_copy.at[index, 'predicted_change_hba1c'] = max_change_list[0]
-
-            X_test_copy.at[index, 'assigned_drug_ldl'] = assigned_drug_class_list[1]
-            X_test_copy.at[index, 'predicted_change_ldl'] = max_change_list[1]
-
-            X_test_copy.at[index, 'assigned_drug_hdl'] = assigned_drug_class_list[2]
-            X_test_copy.at[index, 'predicted_change_hdl'] = max_change_list[2]
-
-            X_test_copy.at[index, 'assigned_drug_bmi'] = assigned_drug_class_list[3]
-            X_test_copy.at[index, 'predicted_change_bmi'] = max_change_list[3]
-        return X_test_copy
             
         
     def train_models(self, models, X_test, Y_test, X_train, Y_train, train,scaler,X_test_original):
@@ -140,7 +96,7 @@ class Train:
             data_pred, model_results, model_results_drugs, score = get_scores(model, X_test, Y_test, X_train, Y_train, model_results, model_results_drugs)
 
             
-        X_test_copy = self.predict_drug_classes(model, X_test, Y_train)
+        X_test_copy = predict_drug_classes(model, X_test, Y_train)
         
         denormalized_test_data = scaler.inverse_transform(X_test_original)
         denormalized_test_df = pd.DataFrame(denormalized_test_data, columns=X_test_original.columns)
@@ -364,9 +320,7 @@ class Train:
         random.seed(SEED) 
         model_results = self.train_models(models, X_test_selected, Y_test, X_train_selected, Y_train, train, scaler, X_test_original)
         return model_results
-
-    
-        
+ 
 if __name__ == "__main__":
     print("Initialte model training...")
     train = Train()

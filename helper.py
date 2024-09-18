@@ -435,6 +435,75 @@ def find_closest_to_42(pred_sglt, pred_dpp):
     drug_class = drug_classes[max_index]
     return closest_value, drug_class
 
+def predict_drug_classes(model, X_test, Y_train):
+    X = X_test.copy()
+    X_test_copy = X_test.copy()
+    X_test_copy['assigned_drug_hba1c'] = np.nan
+    X_test_copy['predicted_change_hba1c'] = np.nan
+    X_test_copy['assigned_drug_ldl'] = np.nan
+    X_test_copy['predicted_change_ldl'] = np.nan
+    X_test_copy['assigned_drug_hdl'] = np.nan
+    X_test_copy['predicted_change_hdl'] = np.nan
+    X_test_copy['assigned_drug_bmi'] = np.nan
+    X_test_copy['predicted_change_bmi'] = np.nan
+        
+    assigned_drug_class_list = [np.nan] * Y_train.shape[1]
+    max_change_list = [np.nan] * Y_train.shape[1]
+        
+    for index, row in X.iterrows():
+        drug_class = row['drug_class']
+
+        pred_original = model.predict(row.values[None])[0]
+        pred_sglt, pred_dpp = pred_all(model, row, drug_class) 
+
+        for j in range(Y_train.shape[1]):
+            if (Y_train.iloc[:,j].name == 'hdl_12m'):
+                temp_max_change, temp_assigned_drug_class = find_highest_respponse_value(pred_sglt[j], pred_dpp[j])
+            else:
+                temp_max_change, temp_assigned_drug_class = find_lowest_respponse_value(pred_sglt[j], pred_dpp[j])
+                
+            max_change_list[j] = temp_max_change
+            assigned_drug_class_list[j] = temp_assigned_drug_class
+                
+        X_test_copy.at[index, 'assigned_drug_hba1c'] = assigned_drug_class_list[0]
+        X_test_copy.at[index, 'predicted_change_hba1c'] = max_change_list[0]
+
+        X_test_copy.at[index, 'assigned_drug_ldl'] = assigned_drug_class_list[1]
+        X_test_copy.at[index, 'predicted_change_ldl'] = max_change_list[1]
+
+        X_test_copy.at[index, 'assigned_drug_hdl'] = assigned_drug_class_list[2]
+        X_test_copy.at[index, 'predicted_change_hdl'] = max_change_list[2]
+
+        X_test_copy.at[index, 'assigned_drug_bmi'] = assigned_drug_class_list[3]
+        X_test_copy.at[index, 'predicted_change_bmi'] = max_change_list[3]
+    return X_test_copy
+    
+def print_strata_stats(dpp_strata_actual, sglt_strata_actual, dpp_strata_hba1c, sglt_strata_hba1c, dpp_strata_ldl, sglt_strata_ldl,
+                       dpp_strata_hdl, sglt_strata_hdl, dpp_strata_bmi, sglt_strata_bmi):
+    print(' Sample count in test data')
+    print(' number of dpp4 samples in test dataset : ', dpp_strata_actual.shape[0])
+    print(' number of sglt2 samples in test dataset : ', sglt_strata_actual.shape[0])
+
+    print(' \n Assigned sample count: HBA1C')
+
+    print(' number of dpp4 assigned : ', dpp_strata_hba1c.shape[0])
+    print(' number of sglt2 assigned : ', sglt_strata_hba1c.shape[0])
+
+    print(' \n Assigned sample count: LDL')
+
+    print(' number of dpp4 assigned : ', dpp_strata_ldl.shape[0])
+    print(' number of sglt2 assigned : ', sglt_strata_ldl.shape[0])
+
+    print(' \n Assigned sample count: HDL')
+
+    print(' number of dpp4 assigned : ', dpp_strata_hdl.shape[0])
+    print(' number of sglt2 assigned : ', sglt_strata_hdl.shape[0])
+
+    print(' \n Assigned sample count: BMI')
+
+    print(' number of dpp4 assigned : ', dpp_strata_bmi.shape[0])
+    print(' number of sglt2 assigned : ', sglt_strata_bmi.shape[0])
+
 def check_aggreement(df, discordant_1, data, variable_name):
     
     concordant_glp = pd.DataFrame(columns=data.columns)
@@ -818,14 +887,14 @@ def drug_class_outlier_remove(df, df_act, response_variable, predicted_change, a
     
     return df_new
 
-def save_data_for_ensemble(X_train_original, Y_train, X_test_original, Y_test):
+def save_data_for_ensemble(X_train_original, Y_train, X_test_original, Y_test, file_path):
     train_data = pd.concat([X_train_original, Y_train], axis=1)
     # Concatenate X_test and Y_test horizontally
     test_data = pd.concat([X_test_original, Y_test], axis=1)
 
     result = pd.concat([train_data, test_data], axis=0)
     
-    result.to_csv('../resources/output/preprocessed_data.csv')
+    result.to_csv(file_path)
 
 def min_max_normalize(arr):
     min_val = np.min(arr)
@@ -833,7 +902,7 @@ def min_max_normalize(arr):
     normalized = (arr - min_val) / (max_val - min_val)
     return normalized
 
-def get_feature_importance(model, X):
+def get_feature_importance(model, X, file_path):
     feature_importances = []
     for i, regressor in enumerate(model.estimators_):
         if hasattr(regressor, 'feature_importances_'):
@@ -850,11 +919,11 @@ def get_feature_importance(model, X):
         'Importance': average_feature_importances
     }).sort_values(by='Importance', ascending=False)
 
-    importances_df.to_csv('../resources/output/feature_importance_dataframe.csv', index = False)
+    importances_df.to_csv(file_path, index = False)
     
     return importances_df
 
-def get_feature_importance_for_voting_regressor(model, X):
+def get_feature_importance_for_voting_regressor(model, X, file_path):
     feature_importances = []
     
     for i, val in enumerate(model.estimators_):
@@ -876,7 +945,7 @@ def get_feature_importance_for_voting_regressor(model, X):
         }).sort_values(by='Importance', ascending=False)
         
         # Save to CSV (optional)
-        importances_df.to_csv('../resources/output/feature_importance_dataframe.csv', index=False)
+        importances_df.to_csv(file_path, index=False) # file_path = FEATURE_IMPORTANCE_DF_LOCATION
         
         return importances_df
     else:
