@@ -18,7 +18,7 @@ from helper import read_data, preprocess, get_test_train_data, get_features_kbes
     get_features_relieff, outlier_detect, train_models, get_concordant_discordant, print_change_mean, percentage_change_original_data,\
     calculate_percentage_change, calculate_percentage_change_othre_responses, calculate_change_diff, drug_class_visualization,\
     drug_class_outlier_remove, save_data_for_ensemble, get_feature_importance, predict_drug_classes, print_strata_stats,\
-    get_feature_importance_for_voting_regressor
+    get_feature_importance_for_voting_regressor, get_strata
 
 from constants import COMMON_VARIABLE_PATH, SEED, TEST_PATH_WO_LDL_IMPUTATION, TRAIN_PATH_WO_LDL_IMPUTATION, DPP_VALUE,\
     SGLT_VALUE, SCATTER_PLOT_ACTUAL_VS_PRED, SHAP_SUMMARY_PLOT_HBA1C, SHAP_SUMMARY_PLOT_LDL, SHAP_SUMMARY_PLOT_HDL,\
@@ -392,7 +392,23 @@ class BaseModel:
         return explainer, shap_values
         
     def get_shap_label(self, Y_test, val):
-        
+        """
+        Generates a dropdown widget to select a label from the columns of Y_test.
+
+        This method creates a list of column labels from `Y_test` DataFrame and pairs 
+        each label with its index in a tuple. A dropdown widget is then created with these tuples 
+        to allow for selecting a specific label by index. The selected label index can be accessed 
+        using `current_label.value`.
+
+        Args:
+            Y_test (DataFrame): The DataFrame containing the target labels (columns) from which to select.
+            val (int): The default index value for the dropdown selection.
+
+        Returns:
+            tuple: A tuple containing:
+                - list_of_labels (list): List of all label names (columns) from Y_test.
+                - current_label (widgets.Dropdown): A dropdown widget to select a label.
+        """
         # Create the list of all labels for the drop down list
         list_of_labels = Y_test.columns.to_list()
 
@@ -407,8 +423,18 @@ class BaseModel:
         # Display the dropdown list (Note: access index value with 'current_label.value')
         return list_of_labels, current_label
 
-    def rename_features(self, X_test):
-        X_test_features = X_test.rename(columns={
+    def rename_features(self, df):
+        """
+        Renames the columns of the provided DataFrame (X_test) to more descriptive feature names.
+
+        Args:
+            df (DataFrame): The input DataFrame containing the original feature names.
+
+        Returns:
+            DataFrame: A new DataFrame with the columns renamed to more descriptive feature names.
+        """
+
+        X_test_features = df.rename(columns={
             'P_Krea': 'Creatinine',
             'bmi': 'Baseline BMI',
             'drug_class':'Drug class',
@@ -426,9 +452,22 @@ class BaseModel:
         return X_test_features
     
     def save_shap_summary_plot(self, shap_values, list_of_labels, current_label, X_test_features):
-        #high positive SHAP value for a specific instance, 
-        #means that increasing the value of that feature would tend to increase the predicted output 
-        #of the regression model for that instance.
+        """
+        Generates and saves a SHAP summary plot for the current model feature importance analysis.
+
+        The SHAP summary plot visualizes the impact of individual features on the model's output. 
+        High positive SHAP values indicate that increasing the feature's value will increase the predicted output, 
+        while low or negative SHAP values have the opposite effect.
+
+        Args:
+            shap_values (list): A list of SHAP values for the different output labels/features.
+            list_of_labels (list): A list of labels corresponding to the output features of the model.
+            current_label (int): The index of the current label to be displayed in the SHAP summary plot.
+            X_test_features (DataFrame): The input test data with feature names to be used in the SHAP summary plot.
+
+        Returns:
+            None: The function saves the SHAP summary plot as an image file and displays it.
+        """
         
         print(f"Current Label Shown: {list_of_labels[current_label.value]}\n")
 
@@ -445,10 +484,39 @@ class BaseModel:
         cb_ax.set_ylabel("Feature value", fontsize=IMAGE_FONT_SIZE_24)
 
         plt.savefig(self.path_to_shap_sp_bmi ,bbox_inches='tight', dpi=IMAGE_DPI_300)
-
         plt.show()
 
     def assign_sample_to_stratas(self, scaler, X_test_original, X_test_copy, Y_test):
+        """
+        Assigns samples to different strata (groups) based on drug assignments and predicted outcomes,
+        denormalizes the test data, and saves the results to a CSV file.
+
+        This method:
+        - Denormalizes the test data using the provided scaler.
+        - Segments the data into various strata (DPP and SGLT groups) for different biomarkers and drug classes.
+        - Saves the final dataframe with assigned drugs and predicted changes to a CSV file.
+
+        Args:
+            scaler (object): The scaler used to normalize the original test data. It is used to revert the normalization.
+            X_test_original (DataFrame): The original test dataset, which will be denormalized.
+            X_test_copy (DataFrame): A copy of the test dataset that contains assigned drug and predicted changes.
+            Y_test (DataFrame): The actual test target values for the response variables.
+
+        Returns:
+            tuple: 
+            - data (DataFrame): The final dataframe containing denormalized test data and assigned drug strata.
+            - dpp_strata_hba1c (DataFrame): Subset of data where the assigned drug for HbA1c is DPP.
+            - sglt_strata_hba1c (DataFrame): Subset of data where the assigned drug for HbA1c is SGLT.
+            - dpp_strata_ldl (DataFrame): Subset of data where the assigned drug for LDL is DPP.
+            - sglt_strata_ldl (DataFrame): Subset of data where the assigned drug for LDL is SGLT.
+            - dpp_strata_hdl (DataFrame): Subset of data where the assigned drug for HDL is DPP.
+            - sglt_strata_hdl (DataFrame): Subset of data where the assigned drug for HDL is SGLT.
+            - dpp_strata_bmi (DataFrame): Subset of data where the assigned drug for BMI is DPP.
+            - sglt_strata_bmi (DataFrame): Subset of data where the assigned drug for BMI is SGLT.
+            - dpp_strata_actual (DataFrame): Subset of data where the actual drug class is DPP.
+            - sglt_strata_actual (DataFrame): Subset of data where the actual drug class is SGLT.
+        """
+    
         denormalized_test_data = scaler.inverse_transform(X_test_original)
         denormalized_test_df = pd.DataFrame(denormalized_test_data, columns=X_test_original.columns)
         denormalized_test_df = denormalized_test_df.drop(['drug_class'], axis = 1)
@@ -461,38 +529,59 @@ class BaseModel:
         
         data[self.response_variable_list] = Y_test[self.response_variable_list]
 
-        data['assigned_drug_hba1c'] = X_test_['assigned_drug_hba1c']
-        data['predicted_change_hba1c'] = X_test_['predicted_change_hba1c']
-        data['assigned_drug_ldl'] = X_test_['assigned_drug_ldl']
-        data['predicted_change_ldl'] = X_test_['predicted_change_ldl']
-        data['assigned_drug_hdl'] = X_test_['assigned_drug_hdl']
-        data['predicted_change_hdl'] = X_test_['predicted_change_hdl']
-        data['assigned_drug_bmi'] = X_test_['assigned_drug_bmi']
-        data['predicted_change_bmi'] = X_test_['predicted_change_bmi']
-        data['drug_class'] = X_test_['drug_class']
+        # Add drug assignments and predictions
+        columns_to_add = ['assigned_drug_hba1c', 'predicted_change_hba1c', 
+                        'assigned_drug_ldl', 'predicted_change_ldl',
+                        'assigned_drug_hdl', 'predicted_change_hdl', 
+                        'assigned_drug_bmi', 'predicted_change_bmi', 'drug_class']
+        data[columns_to_add] = X_test_[columns_to_add]
 
         # save data to csv
         data.to_csv(self.file_path_predicted_drug_file)
         
-        dpp_strata_hba1c = data[(data['assigned_drug_hba1c'] == DPP_VALUE)]
-        sglt_strata_hba1c = data[(data['assigned_drug_hba1c'] == SGLT_VALUE)] 
-
-        dpp_strata_ldl = data[(data['assigned_drug_ldl'] == DPP_VALUE)]
-        sglt_strata_ldl = data[(data['assigned_drug_ldl'] == SGLT_VALUE)] 
-
-        dpp_strata_hdl = data[(data['assigned_drug_hdl'] == DPP_VALUE)]
-        sglt_strata_hdl = data[(data['assigned_drug_hdl'] == SGLT_VALUE)] 
-
-        dpp_strata_bmi = data[(data['assigned_drug_bmi'] == DPP_VALUE)]
-        sglt_strata_bmi = data[(data['assigned_drug_bmi'] == SGLT_VALUE)] 
-
-        dpp_strata_actual = data[(data['drug_class'] == DPP_VALUE)]
-        sglt_strata_actual = data[(data['drug_class'] == SGLT_VALUE)] 
+        # Define the list of biomarkers and drug columns
+        biomarkers = ['hba1c', 'ldl', 'hdl', 'bmi']
+        strata = {}
         
-        return data, dpp_strata_hba1c, sglt_strata_hba1c, dpp_strata_ldl, sglt_strata_ldl, dpp_strata_hdl, sglt_strata_hdl, dpp_strata_bmi,\
-            sglt_strata_bmi, dpp_strata_actual, sglt_strata_actual
+        # Iterate through each biomarker to extract DPP and SGLT groups
+        for biomarker in biomarkers:
+            strata[f'dpp_strata_{biomarker}'] = get_strata(data, f'assigned_drug_{biomarker}', DPP_VALUE)
+            strata[f'sglt_strata_{biomarker}'] = get_strata(data, f'assigned_drug_{biomarker}', SGLT_VALUE)
+
+        # Extract actual drug class strata
+        strata['dpp_strata_actual'] = get_strata(data, 'drug_class', DPP_VALUE)
+        strata['sglt_strata_actual'] = get_strata(data, 'drug_class', SGLT_VALUE)
+
+        return (data, 
+                strata['dpp_strata_hba1c'], strata['sglt_strata_hba1c'], 
+                strata['dpp_strata_ldl'], strata['sglt_strata_ldl'], 
+                strata['dpp_strata_hdl'], strata['sglt_strata_hdl'], 
+                strata['dpp_strata_bmi'], strata['sglt_strata_bmi'], 
+                strata['dpp_strata_actual'], strata['sglt_strata_actual'])
 
     def initialize(self):
+        
+        """
+        Initializes the workflow for model execution, data analysis, and visualization of results.
+
+        This method performs the following tasks:
+        1. Reads training and test datasets from the specified file paths.
+        2. Executes the machine learning model, printing model performance and results.
+        3. Prepares data for ensemble models and calculates feature importances.
+        4. Generates actual vs. predicted plots for the model's predictions.
+        5. Computes SHAP values for model interpretation if SHAP analysis is enabled.
+        6. Predicts drug classes based on the trained model and assigns samples to strata for further analysis.
+        7. Computes concordant and discordant treatment effects for various clinical responses before and after outlier removal.
+        8. Visualizes observed vs. predicted drug classes for various clinical responses.
+        9. Removes outliers from predicted values for more accurate analysis.
+        10. Calculates and prints the percentage change in clinical responses and evaluates differences between observed and predicted values.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
         df_X_train = read_data(self.file_path_train_data)
         df_X_test = read_data(self.file_path_test_data)
         
@@ -715,10 +804,9 @@ class BaseModel:
         print('\n\n====== Percentage =========')
         calculate_percentage_change(concordant_dpp_bmi, discordant_dpp_sglt_bmi,
                     concordant_sglt_bmi, discordant_sglt_dpp_bmi,  response_variable = 'bmi_12m', baseline_val='bmi' )
-
-    
     
 if __name__ == "__main__":
     print("Initialte optimal model training...")
     baseModel = BaseModel()
-    baseModel.initialize()
+    # Call the initialize method to execute the workflow
+    baseModel.initialize() 

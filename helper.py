@@ -504,6 +504,20 @@ def print_strata_stats(dpp_strata_actual, sglt_strata_actual, dpp_strata_hba1c, 
     print(' number of dpp4 assigned : ', dpp_strata_bmi.shape[0])
     print(' number of sglt2 assigned : ', sglt_strata_bmi.shape[0])
 
+def get_strata(df, drug_col, drug_value):
+        """
+        Extracts a subset of the DataFrame where the values in a specified column match a given drug value.
+        
+        Args:
+            df (DataFrame): The input DataFrame from which to extract a subset.
+            drug_col (int): The column in the DataFrame representing the assigned drug or drug-related feature.
+            drug_value (int): The value to match in the specified drug column (e.g., DPP_VALUE, SGLT_VALUE).
+
+        Returns:
+            DataFrame: A subset of the input DataFrame where the values in 'drug_col' match 'drug_value'.
+        """
+        return df[df[drug_col] == drug_value]
+    
 def check_aggreement(df, discordant_1, data, variable_name):
     
     concordant_glp = pd.DataFrame(columns=data.columns)
