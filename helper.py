@@ -37,25 +37,31 @@ from collections import Counter
 from imblearn.over_sampling import SMOTE, ADASYN
 from imblearn.over_sampling import BorderlineSMOTE
 
-
 from sklearn.multioutput import RegressorChain, MultiOutputRegressor
 from sklearn.exceptions import DataConversionWarning
 
-def read_data(file_path):
-        """Read training data file
+from constants import SEED
 
-        Returns:
-            df: dataframe
-        """
-        df = pd.read_csv(file_path, sep = ',',decimal = '.', encoding = 'utf-8', engine ='python', index_col=0)
-        return df
+
+def read_data(file_path):
+    
+    """Read training data file
+
+    Returns:
+        df: dataframe
+    """
+        
+    df = pd.read_csv(file_path, sep = ',',decimal = '.', encoding = 'utf-8', engine ='python', index_col=0)
+    return df
     
 def get_nan_count(df):
+    
     """Print NaN count in selected columns
 
         Args:
             df : dataframe
     """
+    
     selected_columns = df[['hba1c_12m', 'ldl_12m', 'hdl_12m', 'bmi_12m']].columns
     # Count NaN values in selected columns
     nan_counts = df[selected_columns].isna().sum()
@@ -66,36 +72,43 @@ def get_nan_count(df):
     
 def preprocess(df, response_variable_list):
 
+    """
+    Further preprocesses the given DataFrame by performing the following steps:
+
+    1. Removes rows with missing values in any of the specified response variables.
+    2. Filters the DataFrame to include only rows where 'days_hba1c' is between 21 and 365 (inclusive).
+    3. Drops id column and columns related to time intervals and dates.
+    4. Removes rows where 'hdl_12m' is greater than 2.5 and 'bmi_12m' is greater than 50.
+    5. Converts all remaining columns to float type.
+
+    Args:
+        df (DataFrame): The DataFrame to be preprocessed.
+        response_variable_list (list): A list of target column names.
+
+    Returns:
+        DataFrame: The preprocessed DataFrame.
+    """
+    
     # remove rows with missing 'response variable'
     df = df.dropna(how='any', subset = response_variable_list)
     print('Shape of data after excluding missing response:', np.shape(df))
-
-    df = df.drop('id', axis=1)
-   
-    
-    date_cols = ['date_hba_bl_6m','date_ldl_bl','date_bmi_bl','date_hdl_bl',
-                 'date_12m', 'date_n1',
-                 'date_ldl_12m',
-                 'date_bmi_12m',
-                 'date_hdl_12m']
-    df = df.drop(date_cols, axis=1)
     
     # select time interval
     start = 21
     end = 365 #426
     df = df[(df['days_hba1c'] >= start) & (df['days_hba1c'] <= end)]
-    
     print('Shape of full data after selecting date range dates > 21 days', np.shape(df))
     
-    df = df.drop(['days_hba1c', 'days_bmi', 'days_hdl', 'days_ldl'], axis=1)
-
-    hdl_greater_than_5= 2.5  # Replace this with your desired threshold
-    mask_hdl = df['hdl_12m'] > hdl_greater_than_5  # Replace 'column_name' with the actual column you want to filter
-    df = df.drop(df[mask_hdl].index, axis = 0)
-
-    bmi_greater_less_5= 50  # Replace this with your desired threshold
-    mask_bmi = df['bmi_12m'] > bmi_greater_less_5  # Replace 'column_name' with the actual column you want to filter
-    df = df.drop(df[mask_bmi].index, axis = 0)
+    del_cols = ['id', 'date_hba_bl_6m','date_ldl_bl','date_bmi_bl','date_hdl_bl',
+                 'date_12m', 'date_n1', 'date_ldl_12m', 'date_bmi_12m', 'date_hdl_12m',
+                 'days_hba1c', 'days_bmi', 'days_hdl', 'days_ldl']
+    df = df.drop(del_cols, axis=1)
+    
+    # Define thresholds
+    hdl_threshold = 2.5
+    bmi_threshold = 50
+    mask = (df['hdl_12m'] > hdl_threshold) | (df['bmi_12m'] > bmi_threshold) # Create combined mask for rows to be removed
+    df = df[~mask] # Drop rows based on the combined mask
     
     df = df.astype(float)
     return df
@@ -103,8 +116,35 @@ def preprocess(df, response_variable_list):
     
 def get_test_train_data(X_train_df, X_test_df, response_variable_list):
     
+    """
+    Prepare training and testing data by performing the following steps:
+
+    1. Combine the training and testing datasets to handle missing values and scaling consistently.
+    2. Separate features and response variables for both training and testing datasets.
+    3. Impute missing values in features using the most frequent strategy.
+    4. Scale the features using Min-Max scaling, except for specified columns.
+    5. Perform random oversampling on the training data to balance the response variable distribution.
+
+    Args:
+        X_train_df (DataFrame): The training DataFrame.
+        X_test_df (DataFrame): The testing DataFrame.
+        response_variable_list (list): A list of column names of target variables.
+
+    Returns:
+        tuple: A tuple containing:
+            - original (DataFrame): The combined original dataset (training + testing).
+            - X_train (DataFrame): The processed training features after imputation, scaling, and oversampling.
+            - X_test (DataFrame): The processed testing features after imputation and scaling.
+            - Y_train (Series): The training response variables.
+            - Y_test (Series): The testing response variables.
+            - X (DataFrame): The features from the original combined dataset.
+            - Y (DataFrame): The response variables from the original combined dataset.
+            - scaler (Object): The scaler used for normalizing the features.
+            - X_test_before_scale (DataFrame): The testing features before scaling.
+    """
+    
     # split data
-    random.seed(42)
+    random.seed(SEED)
     # Save original data set
     original = pd.concat([X_train_df, X_test_df], ignore_index=False)
     
@@ -116,48 +156,45 @@ def get_test_train_data(X_train_df, X_test_df, response_variable_list):
     
     Y_test = X_test_df[response_variable_list]
     X_test = X_test_df.drop(response_variable_list, axis=1)
-    random.seed(42)
-    
+    random.seed(SEED)
     
     # data imputation
     original_X_train = X_train.copy()
     original_X_test = X_test.copy()
-    random.seed(42)
-    
-    print('X_train shape: ',X_train.shape)
+    random.seed(SEED)
     
     imputer = SimpleImputer(missing_values=np.nan, strategy = "most_frequent")
     # imputeX = KNNImputer(missing_values=np.nan, n_neighbors = 3, weights='distance')
     # imputeX = IterativeImputer(max_iter=5, random_state=0)
     X_train = imputer.fit_transform(X_train)
     X_test = imputer.transform(X_test)
-    print(X_train.shape)
-    
+    print('X_train shape after imputation: ', X_train.shape)
     
     X_train = pd.DataFrame(X_train, columns = original_X_train.columns, index=original_X_train.index)
     X_test = pd.DataFrame(X_test, columns = original_X_train.columns, index=original_X_test.index)
-    
-    #     columns_to_skip_normalization = ['drug_class']
+
+    # columns_to_skip_normalization = ['drug_class']
     columns_to_skip_normalization = []
     # List of columns to normalize
     columns_to_normalize = [col for col in X_train.columns if col not in columns_to_skip_normalization]
 
     # scale data 
-#     scaler = StandardScaler()
+    # scaler = StandardScaler()
     scaler = MinMaxScaler()
     select = {}
-#     X_train[columns_to_normalize] = scaler.fit_transform(X_train[columns_to_normalize])
-#     X_test[columns_to_normalize] = scaler.transform(X_test[columns_to_normalize])
+    # X_train[columns_to_normalize] = scaler.fit_transform(X_train[columns_to_normalize])
+    # X_test[columns_to_normalize] = scaler.transform(X_test[columns_to_normalize])
     
     # random oversampling 
     combined_df = pd.concat([X_train, Y_train], axis=1)
     X_oversamp = combined_df.drop(['drug_class'], axis = 1)
     Y_oversamp = combined_df['drug_class']
-    random.seed(42)
+    random.seed(SEED)
     ros = RandomOverSampler(random_state=0)
     #smote = SMOTE()
-    random.seed(42)
+    random.seed(SEED)
     X_resampled, y_resampled = ros.fit_resample(X_oversamp, Y_oversamp)
+    print('\n Shape of the data after oversampling')
     print(set(Y_oversamp))
     print(sorted(Counter(Y_oversamp).items()))
     print(sorted(Counter(y_resampled).items()))
@@ -170,13 +207,21 @@ def get_test_train_data(X_train_df, X_test_df, response_variable_list):
     X_train[columns_to_normalize] = scaler.fit_transform(X_train[columns_to_normalize])
     X_test[columns_to_normalize] = scaler.transform(X_test[columns_to_normalize])
     
-    #print('Shape of training data after oversampling', np.shape(X_train))
-    
-    
     return original, X_train, X_test, Y_train, Y_test, X, Y, scaler, X_test_before_scale
 
-
 def countUsers(drug_id, df):
+    
+    """
+    Counts the number of users in the DataFrame who are associated with a specific drug class.
+
+    Args:
+        drug_id (int): The drug class identifier to filter the users.
+        df (DataFrame): The DataFrame containing user data with a column 'drug_class'.
+
+    Returns:
+        int: The number of users associated with the specified drug class.
+    """
+    
     df2 = df.apply(lambda x : True
                 if x['drug_class'] == drug_id else False, axis = 1)
     number_of_rows = len(df2[df2 == True].index)
@@ -184,12 +229,26 @@ def countUsers(drug_id, df):
 
 
 def get_features_kbest(X_train, Y_train,i):
-    random.seed(42)
-    np.random.seed(42)
+    
+    """
+    Selects the top `i` features from the training dataset using the `SelectKBest` method with mutual 
+    information as the scoring function.
+
+    Args:
+        X_train (DataFrame): The training data.
+        Y_train (Series): The training target variable.
+        i (int): The number of top features to select.
+
+    Returns:
+        list: A list of the names of the top `i` selected features.
+    """
+    
+    random.seed(SEED)
+    np.random.seed(SEED)
     selector = SelectKBest(score_func=mutual_info_regression, k=i)
     # Fit the selector to your data and transform the feature matrix
     X_selected = selector.fit_transform(X_train, Y_train)
-
+    
     # Get the selected feature indices
     selected_indices = selector.get_support(indices=True)
 
@@ -200,7 +259,24 @@ def get_features_kbest(X_train, Y_train,i):
 
 
 def get_features_ref(X_train, Y_train,i): 
-    random.seed(42)
+    
+    """
+    Selects the top `i` features from the training dataset using Recursive Feature Elimination (RFE) with a 
+    RandomForestRegressor.
+
+    This function utilizes RFE to recursively remove features and identify the top `i` features based on their
+    importance scores from a RandomForestRegressor model.
+
+    Args:
+        X_train (pd.DataFrame): The training data.
+        Y_train (pd.Series): The training target variable.
+        i (int): The number of top features to select.
+
+    Returns:
+        list: A list of the names of the top `i` selected features.
+    """
+    
+    random.seed(SEED)
     model = RandomForestRegressor(random_state = 123)
     rfe = RFE(estimator=model, n_features_to_select=i)  
     X_selected = rfe.fit_transform(X_train, Y_train)
@@ -208,10 +284,27 @@ def get_features_ref(X_train, Y_train,i):
     selected_features = [feature_name for feature_name in X_train.columns[selected_indices]]
     return selected_features
 
-def get_features_ref_multiout(X_train, Y_train, k=12): 
-    random.seed(42)
+def get_features_ref_multiout(X_train, Y_train, k=12):
+    
+    """
+    Selects the top `k` features from the training dataset using Recursive Feature Elimination (RFE) 
+    with a MultiOutputRegressor.
+
+    This function first trains a `MultiOutputRegressor` with a `RandomForestRegressor` as the base estimator 
+    on the training data. It then uses RFE to identify and return the names of the top `k` features that contribute
+    most to predicting the target variables.
+
+    Args:
+        X_train (pd.DataFrame): The training data.
+        Y_train (pd.DataFrame): The training target variables DataFrame with multiple outputs.
+        k (int, optional): The number of top features to select. Defaults to 12.
+
+    Returns:
+        list: A list of the names of the top `k` selected features.
+    """
+    
+    random.seed(SEED)
     model = MultiOutputRegressor(RandomForestRegressor(random_state = 123))
-#     model = RandomForestRegressor(random_state = 123)
     model.fit(X_train, Y_train)  # Fit the model before using RFE
     base_estimator = RandomForestRegressor(random_state=123)
     rfe = RFE(estimator=base_estimator, n_features_to_select=k)  
@@ -222,6 +315,22 @@ def get_features_ref_multiout(X_train, Y_train, k=12):
 
 
 def get_features_relieff(X_train, Y_train,i):
+    
+    """
+    Selects the top `i` features from the training dataset using the ReliefF algorithm.
+
+    This function uses the ReliefF algorithm to evaluate feature importance and returns the names of the top `i` features
+    with the highest importance scores.
+
+    Args:
+        X_train (pd.DataFrame): The training data.
+        Y_train (pd.Series): The training target variable.
+        i (int): The number of top features to select.
+
+    Returns:
+        list: A list of the names of the top `i` selected features, ordered by their importance scores.
+    """
+    
     best_n = i
     X_train_array = X_train.to_numpy()
     y_train_array = Y_train.to_numpy()
@@ -245,17 +354,27 @@ def get_features_relieff(X_train, Y_train,i):
     return feat_names
 
 def get_model_name(model):
+    
+    """
+    This function retrieves the name of the model class by converting the model instance's type to a string,
+    and then parsing the class name from the string representation.
+
+    Args:
+        model (object): An instance of a machine learning model.
+
+    Returns:
+        str: The name of the model class.
+    """
+    
     model_name = str(type(model)).split('.')[-1][:-2]
     return model_name
-
-
 
 def cross_val(model, train, X_test, Y_test, X_train, Y_train, response_variable_list, n_splits=3):
     dfs = []
     acc_arr = []
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=123)
     i = 1
-    random.seed(42)
+    random.seed(SEED)
     for train_index, test_index in kf.split(train, Y_train):
         X_train1 = train.iloc[train_index].loc[:, X_train.columns]
         X_test1 = train.iloc[test_index].loc[:,X_train.columns]
@@ -263,11 +382,11 @@ def cross_val(model, train, X_test, Y_test, X_train, Y_train, response_variable_
         y_test1 = train.iloc[test_index].loc[:,response_variable_list]
         
         if (get_model_name(model)=='Sequential'):
-            random.seed(42)
+            random.seed(SEED)
             model.fit(X_train1, y_train1,epochs=250, batch_size=16, verbose=0)
         else:
             #Train the model
-            random.seed(42)
+            random.seed(SEED)
             model.fit(X_train1, y_train1) #Training the model
         
         # auc cal
