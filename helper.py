@@ -940,26 +940,66 @@ def get_perc(variable_1, variable_2):
     return mean, std
     
 def percentage_change_original_data(dpp_strata_actual, sglt_strata_actual, baseline_val, response_variable):
+    
+    """
+    Calculates and prints the mean percentage change and standard deviation of the response variable 
+    from the baseline value for both SGLT and DPP drug categories.
+
+    This function compares the original test data for two drug categories (SGLT and DPP), calculating 
+    the mean and standard deviation of the percentage change in a response variable from its baseline value. 
+    It displays the results in a table format.
+
+    Args:
+        dpp_strata_actual (DataFrame): The actual data for DPP drug class.
+        sglt_strata_actual (DataFrame): The actual data for SGLT drug class.
+        baseline_val (str): The name of the column representing the baseline value (e.g., 'baseline_hba1c').
+        response_variable (str): The name of the response variable for which the percentage change 
+                                 is calculated (e.g., 'hba1c_12m').
+
+    Returns:
+        None: This function prints a table with the mean percentage change and standard deviation for 
+              both drug categories, without returning any value.
+    """
+    
     # Calculate percentages for each category
     sglt_percentage, sglt_std = get_perc(sglt_strata_actual[response_variable], sglt_strata_actual[baseline_val])
     dpp_percentage, dpp_std = get_perc(dpp_strata_actual[response_variable], dpp_strata_actual[baseline_val])
-    
 
     # Data for the table
     data = [
-        ["SGLT", f"{sglt_percentage:.2f}%", f"{sglt_std:.2f}%"],
-        ["DPP", f"{dpp_percentage:.2f}%", f"{dpp_std:.2f}%"]
+        ["SGLT", f"{sglt_percentage:.2f}", f"{sglt_std:.2f}"],
+        ["DPP", f"{dpp_percentage:.2f}", f"{dpp_std:.2f}"]
     ]
 
     # Print the table
     headers = ["Category", "Mean Percentage Change from Baseline (original dataset)", "standard deviation of the percentage change from Baseline (original dataset)"]
     print(tabulate(data, headers=headers))
     
-# Percentage Change= [(HbA1c Change/HbA1c Baseline) * 100].mean()
 def calculate_percentage_change(concordant_dpp, discordant_dpp_sglt,
             concordant_sglt, discordant_sglt_dpp, response_variable, baseline_val):
+    
+    """
+    Calculates and prints the mean change from the baseline and standard deviation for concordant 
+    and discordant groups within SGLT and DPP drug classes, along with the treatment difference.
 
-    # Calculate percentages for each category
+    This function evaluates how the response variable changes from its baseline value in different drug classes 
+    (SGLT and DPP), splitting the data into concordant and discordant categories. It also computes the treatment 
+    difference between concordant and discordant groups for both drug classes, displaying the results in a table format.
+
+    Args:
+        concordant_dpp (DataFrame): Data where DPP was correctly assigned (concordant group).
+        discordant_dpp_sglt (DataFrame): Data where DPP was incorrectly assigned as SGLT (discordant group).
+        concordant_sglt (DataFrame): Data where SGLT was correctly assigned (concordant group).
+        discordant_sglt_dpp (DataFrame): Data where SGLT was incorrectly assigned as DPP (discordant group).
+        response_variable (str): The name of the response variable for which the percentage change is calculated 
+                                 (e.g., 'hba1c_12m').
+        baseline_val (str): The name of the column representing the baseline value (e.g., 'baseline_hba1c').
+
+    Returns:
+        None: This function prints a table with the mean percentage change, standard deviation, and treatment 
+              differences for the concordant and discordant groups.
+    """
+
     concordant_sglt_percentage, concordant_sglt_std = get_perc(concordant_sglt[response_variable], concordant_sglt[baseline_val])
     discordant_sglt_dpp_percentage, discordant_sglt_dpp_std = get_perc(discordant_sglt_dpp[response_variable], discordant_sglt_dpp[baseline_val])
     concordant_dpp_percentage, concordant_dpp_std = get_perc(concordant_dpp[response_variable], concordant_dpp[baseline_val])
@@ -969,16 +1009,16 @@ def calculate_percentage_change(concordant_dpp, discordant_dpp_sglt,
     dpp_diff = concordant_dpp_percentage - discordant_dpp_sglt_percentage
     # Data for the table
     data = [
-        ["Concordant", "SGLT", "SGLT", f"{concordant_sglt_percentage:.2f}%",  f"{concordant_sglt_std:.2f}%", f"{sglt_diff:.2f}%"],
-        ["Discordant", "DPP", "SGLT", f"{discordant_sglt_dpp_percentage:.2f}%", f"{discordant_sglt_dpp_std:.2f}%", ''],
+        ["Concordant", "SGLT", "SGLT", f"{concordant_sglt_percentage:.2f}",  f"{concordant_sglt_std:.2f}", f"{sglt_diff:.2f}"],
+        ["Discordant", "DPP", "SGLT", f"{discordant_sglt_dpp_percentage:.2f}", f"{discordant_sglt_dpp_std:.2f}", ''],
         
         ['','','','',''],
-        ["Concordant", "DPP", "DPP", f"{concordant_dpp_percentage:.2f}%",  f"{concordant_dpp_std:.2f}%", f"{dpp_diff:.2f}"],
-        ["Discordant", "SGLT", "DPP", f"{discordant_dpp_sglt_percentage:.2f}%", f"{discordant_dpp_sglt_std:.2f}%", ''],
+        ["Concordant", "DPP", "DPP", f"{concordant_dpp_percentage:.2f}",  f"{concordant_dpp_std:.2f}", f"{dpp_diff:.2f}"],
+        ["Discordant", "SGLT", "DPP", f"{discordant_dpp_sglt_percentage:.2f}", f"{discordant_dpp_sglt_std:.2f}", ''],
     ]
 
     # Print the table
-    headers = ["Category","Real value", "Predicted value", "Mean % Change from Baseline", "std", 'treatment difference']
+    headers = ["Category","Real value", "Predicted value", "Mean Change from Baseline", "std", 'treatment difference']
     print(tabulate(data, headers=headers))
     
     
@@ -986,6 +1026,35 @@ def calculate_percentage_change_othre_responses(concordant_dpp, discordant_dpp_s
             concordant_sglt, discordant_sglt_dpp, response_variable1, response_variable2, response_variable3,
             baseline_val1,baseline_val2, baseline_val3,
             label1, label2, label3):
+    
+    """
+    Calculates and prints the mean change and standard deviation for other response variables in 
+    concordant and discordant groups for SGLT and DPP drug classes.
+
+    This function computes the mean change and standard deviation for other three different response variables 
+    (if main response variable is hba1c, this method calculations are for lsl, hdl and bmi) in both concordant and 
+    discordant groups within the SGLT and DPP drug classes. It displays the results in a table format organized by 
+    the provided labels.
+
+    Args:
+        concordant_dpp (DataFrame): Data where DPP was correctly assigned (concordant group).
+        discordant_dpp_sglt (DataFrame): Data where DPP was incorrectly assigned as SGLT (discordant group).
+        concordant_sglt (DataFrame): Data where SGLT was correctly assigned (concordant group).
+        discordant_sglt_dpp (DataFrame): Data where SGLT was incorrectly assigned as DPP (discordant group).
+        response_variable1 (str): The first response variable for which the percentage change is calculated.
+        response_variable2 (str): The second response variable for which the percentage change is calculated.
+        response_variable3 (str): The third response variable for which the percentage change is calculated.
+        baseline_val1 (str): The column representing the baseline value for the first response variable.
+        baseline_val2 (str): The column representing the baseline value for the second response variable.
+        baseline_val3 (str): The column representing the baseline value for the third response variable.
+        label1 (str): The label associated with the first response variable.
+        label2 (str): The label associated with the second response variable.
+        label3 (str): The label associated with the third response variable.
+
+    Returns:
+        None: This function prints a table with the mean change and standard deviation for each response variable 
+              across the concordant and discordant groups.
+    """
     
     # Calculate percentages for each response
     concordant_sglt_v1, concordant_sglt_std_v1 = get_perc(concordant_sglt[response_variable1], concordant_sglt[baseline_val1])
@@ -1005,27 +1074,27 @@ def calculate_percentage_change_othre_responses(concordant_dpp, discordant_dpp_s
 
     data = [
         [label1,'','','',''],
-        ["Concordant", "SGLT", "SGLT", f"{concordant_sglt_v1:.2f}%",  f"{concordant_sglt_std_v1:.2f}%"],
-        ["Discordant", "DPP", "SGLT", f"{discordant_sglt_dpp_v1:.2f}%", f"{discordant_sglt_dpp_std_v1:.2f}%"],
+        ["Concordant", "SGLT", "SGLT", f"{concordant_sglt_v1:.2f}",  f"{concordant_sglt_std_v1:.2f}"],
+        ["Discordant", "DPP", "SGLT", f"{discordant_sglt_dpp_v1:.2f}", f"{discordant_sglt_dpp_std_v1:.2f}"],
         ['','','','',''],
-        ["Concordant", "DPP", "DPP", f"{concordant_dpp_v1:.2f}%",  f"{concordant_dpp_std_v1:.2f}%"],
-        ["Discordant", "SGLT", "DPP", f"{discordant_dpp_sglt_v1:.2f}%", f"{discordant_dpp_sglt_std_v1:.2f}%"],
+        ["Concordant", "DPP", "DPP", f"{concordant_dpp_v1:.2f}",  f"{concordant_dpp_std_v1:.2f}"],
+        ["Discordant", "SGLT", "DPP", f"{discordant_dpp_sglt_v1:.2f}", f"{discordant_dpp_sglt_std_v1:.2f}"],
         ['','','','',''],
         
         [label2,'','','',''],
-        ["Concordant", "SGLT", "SGLT", f"{concordant_sglt_v2:.2f}%",  f"{concordant_sglt_std_v2:.2f}%"],
-        ["Discordant", "DPP", "SGLT", f"{discordant_sglt_dpp_v2:.2f}%", f"{discordant_sglt_dpp_std_v2:.2f}%"],
+        ["Concordant", "SGLT", "SGLT", f"{concordant_sglt_v2:.2f}",  f"{concordant_sglt_std_v2:.2f}"],
+        ["Discordant", "DPP", "SGLT", f"{discordant_sglt_dpp_v2:.2f}", f"{discordant_sglt_dpp_std_v2:.2f}"],
         ['','','','',''],
-        ["Concordant", "DPP", "DPP", f"{concordant_dpp_v2:.2f}%",  f"{concordant_dpp_std_v2:.2f}%"],
-        ["Discordant", "SGLT", "DPP", f"{discordant_dpp_sglt_v2:.2f}%", f"{discordant_dpp_sglt_std_v2:.2f}%"],
+        ["Concordant", "DPP", "DPP", f"{concordant_dpp_v2:.2f}",  f"{concordant_dpp_std_v2:.2f}"],
+        ["Discordant", "SGLT", "DPP", f"{discordant_dpp_sglt_v2:.2f}", f"{discordant_dpp_sglt_std_v2:.2f}"],
         ['','','','',''],
         
         [label3,'','','',''],
-        ["Concordant", "SGLT", "SGLT", f"{concordant_sglt_v3:.2f}%",  f"{concordant_sglt_std_v3:.2f}%"],
-        ["Discordant", "DPP", "SGLT", f"{discordant_sglt_dpp_v3:.2f}%", f"{discordant_sglt_dpp_std_v3:.2f}%"],
+        ["Concordant", "SGLT", "SGLT", f"{concordant_sglt_v3:.2f}",  f"{concordant_sglt_std_v3:.2f}"],
+        ["Discordant", "DPP", "SGLT", f"{discordant_sglt_dpp_v3:.2f}", f"{discordant_sglt_dpp_std_v3:.2f}"],
         ['','','','',''],
-        ["Concordant", "DPP", "DPP", f"{concordant_dpp_v3:.2f}%",  f"{concordant_dpp_std_v3:.2f}%"],
-        ["Discordant", "SGLT", "DPP", f"{discordant_dpp_sglt_v3:.2f}%", f"{discordant_dpp_sglt_std_v3:.2f}%"],
+        ["Concordant", "DPP", "DPP", f"{concordant_dpp_v3:.2f}",  f"{concordant_dpp_std_v3:.2f}"],
+        ["Discordant", "SGLT", "DPP", f"{discordant_dpp_sglt_v3:.2f}", f"{discordant_dpp_sglt_std_v3:.2f}"],
         ['','','','',''],
     ]
 
@@ -1033,9 +1102,29 @@ def calculate_percentage_change_othre_responses(concordant_dpp, discordant_dpp_s
     headers = ["Category","Real value", "Predicted value", "Mean Change", "standard deviation of the change"]
     print(tabulate(data, headers=headers))
     
-    
 def calculate_count_diff(data, response_variable, baseline_val, predicted_change ):
-    # Use vectorized operations to compare entire columns at once
+    
+    """
+    Compares the real and predicted changes from baseline for a given response variable and returns count differences.
+
+    This function computes and compares the actual change and predicted change from baseline for a given 
+    response variable. It returns the count of instances where the actual change 
+    is greater than or less than the predicted change, as well as the count of instances where both real and 
+    predicted values are greater than the baseline.
+
+    Args:
+        data (DataFrame): The dataset containing the response, baseline, and predicted values.
+        response_variable (str): The column name representing the actual response variable in the data.
+        baseline_val (str): The column name representing the baseline value in the data.
+        predicted_change (str): The column name representing the predicted change in the data.
+
+    Returns:
+        tuple: A tuple containing four values:
+            - count_actual (int): The count of instances where the actual change from baseline is greater than the predicted change.
+            - count_pred (int): The count of instances where the predicted change from baseline is greater than the actual change.
+            - greater_than_bl_actual (int): The count of instances where the actual change from baseline is greater than 0.
+            - greater_than_bl_pred (int): The count of instances where the predicted change from baseline is greater than 0.
+    """
     
     real_change = (data[response_variable] - data[baseline_val])
     pred_change = (data[predicted_change] - data[baseline_val])
@@ -1050,11 +1139,33 @@ def calculate_count_diff(data, response_variable, baseline_val, predicted_change
     
 def calculate_change_diff(concordant_dpp, discordant_dpp_sglt, concordant_sglt, discordant_sglt_dpp,
                           response_variable, baseline_val, predicted_change):
+    
+    """
+    Compares real and predicted changes from baseline for both SGLT and DPP groups and prints the count differences.
+
+    This function calculates the number of cases where the actual change from baseline is greater or lesser than the
+    predicted change for concordant SGLT and DPP groups. It also counts and reports the number of cases where 
+    the actual and predicted changes are greater than the baseline for each treatment group.
+
+    Args:
+        concordant_dpp (DataFrame): Subset of data where DPP is concordant between real and predicted values.
+        discordant_dpp_sglt (DataFrame): Subset of data where the model predicted SGLT but the actual treatment was DPP.
+        concordant_sglt (DataFrame): Subset of data where SGLT is concordant between real and predicted values.
+        discordant_sglt_dpp (DataFrame): Subset of data where the model predicted DPP but the actual treatment was SGLT.
+        response_variable (str): Column name representing the actual response variable (e.g., HbA1c change).
+        baseline_val (str): Column name representing the baseline value.
+        predicted_change (str): Column name representing the predicted change.
+
+    Returns:
+        None: This function prints the results in a table format showing the count of samples where the real 
+              and predicted changes are lower than baseline, as well as the number of samples with changes greater 
+              than the baseline in both real and predicted data.
+    """
+    
     concordant_sglt_actual, concordant_sglt_pred, sglt_greater_than_bl_actual, sglt_greater_than_bl_pred = calculate_count_diff(concordant_sglt, 
                                                                                                                                 response_variable, baseline_val, predicted_change)
     concordant_dpp_actual, concordant_dpp_pred, dpp_greater_than_bl_actual, dpp_greater_than_bl_pred = calculate_count_diff(concordant_dpp,
                                                                                                                             response_variable, baseline_val, predicted_change)
-
     # Data for the table
     data = [
         ["SGLT", f"{concordant_sglt_actual}",  f"{concordant_sglt_pred}"],
@@ -1073,17 +1184,25 @@ def calculate_change_diff(concordant_dpp, discordant_dpp_sglt, concordant_sglt, 
     
 
 def check_distribution(df, df_act, response_variable, predicted_change):
-    # Find outliers using z-score
-    out_test = []
-    error = df_act[response_variable] - df[predicted_change]
-    stdres = (error - np.mean(error)) / np.std(error)
-    c = stdres.abs() > 5
-    index_outlier = np.where(c == True)
-    index = stdres.index
-    for j in range(len(c)):
-        if c.iloc[j] == True:
-                #print(f"Output {i + 1}, Test, Outlier Index: {index[j]}")
-            out_test.append(index[j])
+    
+    """
+    Identifies outliers in both actual and predicted data distributions using z-scores.
+
+    This function computes z-scores for the actual response variable and the predicted changes, 
+    and identifies outliers where the absolute z-score exceeds a threshold of 3. The indices 
+    of these outliers are collected for both the actual and predicted datasets.
+
+    Args:
+        df (DataFrame): DataFrame containing predicted values for the response variable.
+        df_act (DataFrame): DataFrame containing the actual observed values for the response variable.
+        response_variable (str): Column name representing the actual response variable (e.g., HbA1c change).
+        predicted_change (str): Column name representing the predicted change in the response variable.
+
+    Returns:
+        tuple: A tuple containing two lists:
+            - outliers_act (list): Indices of outliers from the actual data where the z-score is greater than 3.
+            - outliers_pred (list): Indices of outliers from the predicted data where the z-score is greater than 3.
+    """
     
     z_scores_col1 = (df_act[response_variable] - np.mean(df_act[response_variable])) / np.std(df_act[response_variable])
     outliers_col1 = df_act[abs(z_scores_col1) > 3]
@@ -1092,8 +1211,7 @@ def check_distribution(df, df_act, response_variable, predicted_change):
     z_scores_col2 = (df[predicted_change] - np.mean(df[predicted_change])) / np.std(df[predicted_change])
     outliers_col2 = df[abs(z_scores_col2) > 3]
     outliers_pred = outliers_col2.index.to_list()
- 
-    
+
     return outliers_act, outliers_pred
     
 def plot_scatter(df, df_act, df2, df_act2, baseline_val, predicted_change, response_variable):
@@ -1231,21 +1349,63 @@ def drug_class_outlier_remove(df, df_act, response_variable, predicted_change, a
     return df_new
 
 def save_data_for_ensemble(X_train_original, Y_train, X_test_original, Y_test, file_path):
+    
+    """
+    Saves the training and testing datasets into a single CSV file for ensemble modeling.
+
+    This function concatenates the original training features (X_train_original) with the corresponding 
+    training labels (Y_train), and similarly for the testing data. The combined datasets are then saved 
+    to a specified file path.
+
+    Args:
+        X_train_original (DataFrame): The original training feature set.
+        Y_train (Series or DataFrame): The training labels corresponding to the training feature set.
+        X_test_original (DataFrame): The original testing feature set.
+        Y_test (Series or DataFrame): The testing labels corresponding to the testing feature set.
+        file_path (str): The file path where the combined dataset will be saved as a CSV file.
+
+    Returns:
+        None: This function does not return any value; it directly saves the combined data to a file.
+    """
+    
     train_data = pd.concat([X_train_original, Y_train], axis=1)
     # Concatenate X_test and Y_test horizontally
     test_data = pd.concat([X_test_original, Y_test], axis=1)
-
     result = pd.concat([train_data, test_data], axis=0)
-    
     result.to_csv(file_path)
 
 def min_max_normalize(arr):
+    
+    """
+    Perform min-max normalization
+
+    Returns:
+        normalized (arr): Normalized data
+    """
+    
     min_val = np.min(arr)
     max_val = np.max(arr)
     normalized = (arr - min_val) / (max_val - min_val)
     return normalized
 
 def get_feature_importance(model, X, file_path):
+    
+    """
+    Extracts and averages feature importances from the base regressors of a model.
+
+    This function retrieves model feature importances, normalizes them, and computes the average feature
+    importances across all target variables. The results are then saved to a specified CSV file.
+
+    Args:
+        model (BaseEstimator): A trained model
+        X (DataFrame): The input features used for training the model, used to reference feature names.
+        file_path (str): The file path where the resulting feature importances DataFrame will be saved as a CSV.
+
+    Returns:
+        DataFrame: A DataFrame containing feature names and their averaged (across all 4 target variables) importance values, sorted 
+                   in descending order.
+    """
+    
     feature_importances = []
     for i, regressor in enumerate(model.estimators_):
         if hasattr(regressor, 'feature_importances_'):
@@ -1267,6 +1427,24 @@ def get_feature_importance(model, X, file_path):
     return importances_df
 
 def get_feature_importance_for_voting_regressor(model, X, file_path):
+    
+    """
+    Extracts and averages feature importances from the base regressors of a Voting Regressor (for ensemble model calculations).
+
+    This function iterates through the base regressors of a Voting Regressor, retrieves their feature importances,
+    normalizes them, and computes the average feature importances across all base regressors. The results are 
+    then saved to a specified CSV file.
+
+    Args:
+        model (VotingRegressor): A trained VotingRegressor model containing multiple base regressors.
+        X (DataFrame): The input features used for training the model, used to reference feature names.
+        file_path (str): The file path where the resulting feature importances DataFrame will be saved as a CSV.
+
+    Returns:
+        DataFrame or None: A DataFrame containing feature names and their averaged importance values, sorted 
+                           in descending order. Returns None if no feature importances are found.
+    """
+    
     feature_importances = []
     
     for i, val in enumerate(model.estimators_):
