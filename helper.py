@@ -1,46 +1,23 @@
 import pandas as pd
 import numpy as np
 import random
-from matplotlib.pyplot import pie, axis, show
 import seaborn as sns
-import missingno as msno
-from scipy import stats
 import matplotlib.pyplot as plt
-import yaml
-
-from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
-from sklearn.model_selection import train_test_split, KFold
-from sklearn.feature_selection import RFE, SelectKBest, f_regression, mutual_info_regression
-from sklearn.impute import SimpleImputer, KNNImputer
-from sklearn import linear_model
-from sklearn.neural_network import MLPRegressor
-from sklearn.linear_model import Ridge
-from sklearn.ensemble import RandomForestRegressor
 import statsmodels.regression.linear_model as sm
-from sklearn.gaussian_process import GaussianProcessRegressor as GPR
-from sklearn.gaussian_process.kernels import DotProduct, WhiteKernel, CompoundKernel
-import sklearn_relief as sr
-from skrebate import ReliefF
-from sklearn.ensemble import GradientBoostingRegressor
-from catboost import CatBoostRegressor
-from sklearn.linear_model import ElasticNet
-import lightgbm as ltb
-from sklearn.svm import SVR
-from scipy.stats import ks_2samp
-from tabulate import tabulate
 
-from xgboost.sklearn import XGBRegressor
-from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import KFold
+from sklearn.feature_selection import RFE, SelectKBest, mutual_info_regression
+from sklearn.impute import SimpleImputer
+from sklearn.ensemble import RandomForestRegressor
+from skrebate import ReliefF
+from tabulate import tabulate
 from sklearn.metrics import mean_squared_error, r2_score
 from imblearn.over_sampling import RandomOverSampler
 from collections import Counter
-from imblearn.over_sampling import SMOTE, ADASYN
-from imblearn.over_sampling import BorderlineSMOTE
+from sklearn.multioutput import MultiOutputRegressor
 
-from sklearn.multioutput import RegressorChain, MultiOutputRegressor
-from sklearn.exceptions import DataConversionWarning
-
-from constants import SEED
+from constants import SEED, SGLT_VALUE, DPP_VALUE
 
 
 def read_data(file_path):
@@ -370,50 +347,95 @@ def get_model_name(model):
     return model_name
 
 def cross_val(model, train, X_test, Y_test, X_train, Y_train, response_variable_list, n_splits=3):
+    
+    """
+    Performs cross-validation on the given model using KFold splitting, and evaluates its performance.
+
+    This function splits the training data into `n_splits` folds, trains the model on each training fold,
+    evaluates it on the corresponding test fold, and computes performance metrics. The function also
+    calculates and prints the variance and mean score of the model across all folds.
+
+    Args:
+        model (object): The machine learning model to be evaluated. It should have `fit`, `predict`, and `score` methods.
+        train (DataFrame): The training dataset containing features and response variables.
+        X_test (DataFrame): The test data.
+        Y_test (Series): The test target variables.
+        X_train (DataFrame): The training data.
+        Y_train (pd.Series): The training target variables.
+        response_variable_list (list): A list of column names in `train` that are considered response variables.
+        n_splits (int, optional): The number of folds for cross-validation. Defaults to 3.
+
+    Returns:
+        object: The trained model after cross-validation.
+    """
+    
     dfs = []
     acc_arr = []
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=123)
     i = 1
     random.seed(SEED)
+    
     for train_index, test_index in kf.split(train, Y_train):
         X_train1 = train.iloc[train_index].loc[:, X_train.columns]
         X_test1 = train.iloc[test_index].loc[:,X_train.columns]
         y_train1 = train.iloc[train_index].loc[:,response_variable_list]
         y_test1 = train.iloc[test_index].loc[:,response_variable_list]
         
+        # Train the model
         if (get_model_name(model)=='Sequential'):
+            # Use for NN model
             random.seed(SEED)
             model.fit(X_train1, y_train1,epochs=250, batch_size=16, verbose=0)
         else:
-            #Train the model
             random.seed(SEED)
-            model.fit(X_train1, y_train1) #Training the model
+            model.fit(X_train1, y_train1) 
         
-        # auc cal
+        # calculate the performace matrics
         y_scores = model.predict(X_test1)
         score = model.score(X_test1, y_test1)
         acc_arr.append(score)
         
-        # How many occurrences appear in the train set
         s_train = y_train1.apply(lambda col: col.value_counts()).transpose()
         s_train.columns = [f"train {i}_" + str(col) for col in s_train.columns]
-        
         s_test = y_test1.apply(lambda col: col.value_counts()).transpose()
         s_test.columns = [f"test {i}_" + str(col) for col in s_test.columns]
         
         df = pd.concat([s_train, s_test], axis=1, sort=False)
         dfs.append(df)
-
         i += 1
-
+        
     variance = np.var(acc_arr, ddof=1)
-    
     print("Cross validation variance" , variance)
     print("Cross validation mean score" , sum(acc_arr) / len(acc_arr))
     return model
 
 
 def get_scores(model, X_test, Y_test, X_train, Y_train, model_results, model_results_drugs, name = ''):
+    
+    """
+    Evaluates and prints the performance of a machine learning model using various metrics.
+
+    This function predicts outcomes on the test set using the provided model, calculates the R² score and RMSE,
+    and updates the provided results dictionaries with these metrics.
+    
+    Args:
+        model (object): The machine learning model to be evaluated. It should have `predict` and `score` methods.
+        X_test (DataFrame): The test data.
+        Y_test (Series): The test target variables.
+        X_train (DataFrame): The training data.
+        Y_train (Series): The training target variables.
+        model_results (dict): A dictionary to store R² scores of models.
+        model_results_drugs (dict): A dictionary to store R² scores of models with additional identifiers.
+        name (str, optional): An optional string to append to the model name for storing results. Defaults to an empty string.
+
+    Returns:
+        tuple: A tuple containing:
+            - pred (ndarray): The predicted values for the test set.
+            - model_results (dict): The updated dictionary of R² scores for models.
+            - model_results_drugs (dict): The updated dictionary of R² scores for models with additional identifiers.
+            - score (float): The R² score of the model on the test set.
+    """
+    
     pred = model.predict(X_test)
     score = r2_score(Y_test, pred)
     r2_train = model.score(X_train, Y_train)        
@@ -429,12 +451,53 @@ def get_scores(model, X_test, Y_test, X_train, Y_train, model_results, model_res
         model_results_drugs[str(get_model_name(model)+'_'+name)] = r2_score(Y_test, pred)
     return pred, model_results, model_results_drugs, score
 
+def get_outliers(Y, predictions):
+    """
+    Detects outliers based on standardized residuals.
+    
+    Args:
+        Y (pd.DataFrame): The target variable DataFrame (either training or testing).
+        predictions (np.ndarray): The predicted values corresponding to Y.
+
+    Returns:
+        list: A list of indices where outliers are detected.
+    """
+    outliers = []
+    for i, col in enumerate(Y.columns):
+        actual = Y[col].values  # Convert to numpy array
+        pred = predictions[:, i] if isinstance(predictions, np.ndarray) else predictions[i]  # Handle train/test
+        error = actual - pred
+        stdres = (error - np.mean(error)) / np.std(error)  # Standardized residuals
+        
+        # Identify outliers based on the threshold
+        outliers.extend(Y.index[abs(stdres) > 4])
+    
+    return outliers
+
 def outlier_detect(X_train, Y_train, X_test, Y_test):
+    
+    """
+    Detects outliers in the training and testing datasets based on residuals from OLS regression models.
+
+    This function fits an Ordinary Least Squares (OLS) regression model for each response variable in `Y_train`,
+    makes predictions on both the training and testing datasets, and identifies outliers based on standardized residuals.
+    Outliers are defined as data points with standardized residuals exceeding an absolute value of 4.
+
+    Args:
+        X_train (DataFrame): The training data.
+        Y_train (DataFrame): The training target variables.
+        X_test (DataFrame): The testing features data.
+        Y_test (DataFrame): The testing target variables.
+
+    Returns:
+        tuple: A tuple containing:
+            - out_train (list): A list of indices of outliers in the training set.
+            - out_test (list): A list of indices of outliers in the testing set.
+    """
+    
     # Fit the model for each output in Y_train
     models = []
     predictions_train = []
-    #X_train = X_train.apply(pd.to_numeric)
-    #Y_train = pd.to_numeric(Y_train)
     for col in Y_train.columns:
         model = sm.OLS(Y_train[col], X_train).fit()
         predictions_train.append(model.predict(X_train))
@@ -442,50 +505,44 @@ def outlier_detect(X_train, Y_train, X_test, Y_test):
 
     # Make predictions for each output in Y_test
     predictions = np.column_stack([model.predict(X_test) for model in models])
-
-    # Print out the statistics for each output
-    #for i, model in enumerate(models):
-    #    print(f"Summary for Output {i + 1}:")
-    #    display(model.summary())
-
-    # Check for outliers in training set
-    out_train = []
-    for i, col in enumerate(Y_train.columns):
-        error = Y_train[col] - predictions_train[i]
-        stdres = (error - np.mean(error)) / np.std(error)
-        c = stdres.abs() > 4
-        #display(Counter(c))
-        index_outlier = np.where(c == True)
-        #display(index_outlier)
-        index = stdres.index
-        for j in range(len(c)):
-            if c.iloc[j] == True:
-                #print(f"Output {i + 1}, Train, Outlier Index: {index[j]}")
-                out_train.append(index[j])
-
-    # Check for outliers in testing set
-    out_test = []
-    for i, col in enumerate(Y_test.columns):
-        error = Y_test[col] - predictions[:, i]
-        stdres = (error - np.mean(error)) / np.std(error)
-        c = stdres.abs() > 4
-        #display(Counter(c))
-        index_outlier = np.where(c == True)
-        #display(index_outlier)
-        index = stdres.index
-        for j in range(len(c)):
-            if c.iloc[j] == True:
-                #print(f"Output {i + 1}, Test, Outlier Index: {index[j]}")
-                out_test.append(index[j])
+    
+    # Detect outliers in the training set
+    out_train = get_outliers(Y_train, predictions_train)
+    # Detect outliers in the testing set
+    out_test = get_outliers(Y_test, predictions)
 
     print("Training set outliers:", out_train)
     print("Testing set outliers:", out_test)
     
     return out_train, out_test
 
+def train_models(model, X_test, Y_test, X_train, Y_train, train, scaler, X_test_original, response_variable_list):
+    
+    """
+    Trains a given model using cross-validation and fits it to the training data, 
+    while calculating and storing performance results.
 
+    This function checks the type of model and applies the appropriate training procedure.
+    It uses cross-validation for evaluation, compiles the model if it’s a sequential model, 
+    and fits the model to the training data.
 
-def train_models(model, X_test, Y_test, X_train, Y_train, train,scaler,X_test_original, response_variable_list):
+    Args:
+        model (object): The machine learning model to be trained. Can be a sequential model (e.g., Keras) or a traditional ML model.
+        X_test (DataFrame): Test dataset.
+        Y_test (DataFrame): Target variables for the test dataset.
+        X_train (DataFrame): Training dataset.
+        Y_train (DataFrame): Target variable(s) for the training dataset.
+        train (DataFrame): Combined training dataset used for cross-validation.
+        scaler (object): Scaler used for normalization of the data.
+        X_test_original (DataFrame): Unscaled version of the test dataset.
+        response_variable_list (list): List of target variable names to be used for training and prediction.
+
+    Returns:
+        tuple: A tuple containing:
+            - model_results (dict): A dictionary containing the performance metrics (e.g., R² scores) of the model for different targets.
+            - model (object): The trained model after fitting on the training data.
+    """
+    
     model_results = {}
     model_results_drugs = {}
     if str(get_model_name(model)) == 'Sequential':
@@ -498,107 +555,187 @@ def train_models(model, X_test, Y_test, X_train, Y_train, train,scaler,X_test_or
     data_pred, model_results, model_results_drugs, score = get_scores(model, X_test, Y_test, X_train, Y_train, model_results, model_results_drugs)
     
     return model_results, model
-    
-    
-def print_val(name, pred_sglt, pred_dpp):
-    print(name)
-    print(pred_sglt)
-    print(pred_dpp)
-    
 
 def pred_all(model, row, drug_class):
-    sglt_val = 1
-    dpp_val = 0
-    if drug_class == sglt_val:
-        pred_sglt_ = model.predict(row.values[None])[0]
-        row['drug_class'] = dpp_val
-        pred_dpp_ = model.predict(row.values[None])[0]
-#         print_val('SGLT', pred_sglt, pred_dpp)
+    
+    """
+    Predicts outcomes based on the specified drug class using the given model.
+
+    This function takes a model and a data row, and based on the specified drug class,
+    it makes predictions for both SGLT and DPP drug classes.
+
+    Args:
+        model (object): The trained machine learning model used for making predictions.
+        row (DataFrame): A single row of input features for prediction.
+        drug_class (int): An integer indicating the current drug class (0 for DPP, 1 for SGLT).
+
+    Returns:
+        tuple: A tuple containing:
+            - pred_sglt_ (ndarray): The predicted values for the SGLT drug class.
+            - pred_dpp_ (ndarray): The predicted values for the DPP drug class.
         
-    elif drug_class == dpp_val:
-        pred_dpp_ = model.predict(row.values[None])[0]
-        row['drug_class'] = sglt_val
+    Raises:
+        ValueError: If an invalid drug class is provided.
+    """
+    
+    if drug_class == SGLT_VALUE:
         pred_sglt_ = model.predict(row.values[None])[0]
-#         print_val('DPP', pred_sglt, pred_dpp)
+        row['drug_class'] = DPP_VALUE
+        pred_dpp_ = model.predict(row.values[None])[0]
         
+    elif drug_class == DPP_VALUE:
+        pred_dpp_ = model.predict(row.values[None])[0]
+        row['drug_class'] = SGLT_VALUE
+        pred_sglt_ = model.predict(row.values[None])[0]
     else:
         print('Worng drug class')
+        raise ValueError(f"No drug class for given input")
     return pred_sglt_, pred_dpp_
 
 def find_lowest_respponse_value(pred_sglt, pred_dpp):
-    sglt_val = 1
-    dpp_val = 0
+    
+    """
+    Determines the lowest predicted response value between SGLT and DPP drug classes.
+
+    This function takes the predicted response values for both SGLT and DPP drug classes,
+    identifies which one is lower, and returns that value along with the corresponding drug class.
+    This method used to take decisions on hba1c, ldl and bmi
+
+    Args:
+        pred_sglt (float): The predicted response value for the SGLT drug class.
+        pred_dpp (float): The predicted response value for the DPP drug class.
+
+    Returns:
+        tuple: A tuple containing:
+            - min_difference (float): The lowest predicted response value between SGLT and DPP.
+            - drug_class (int): An integer representing the drug class corresponding to the lowest value 
+                                (1 for SGLT, 0 for DPP).
+    """
+    
     values = [pred_sglt, pred_dpp]
-    max_index = values.index(min(values))
-    max_difference = [pred_sglt, pred_dpp][max_index]
-    drug_class = [sglt_val, dpp_val][max_index]
-    return max_difference, drug_class
+    min_index = values.index(min(values))
+    min_difference = [pred_sglt, pred_dpp][min_index]
+    drug_class = [SGLT_VALUE, DPP_VALUE][min_index]
+    return min_difference, drug_class
 
 def find_highest_respponse_value(pred_sglt, pred_dpp):
-    sglt_val = 1
-    dpp_val = 0
+    
+    """
+    Determines the highest predicted response value between SGLT and DPP drug classes.
+
+    This function takes the predicted response values for both SGLT and DPP drug classes,
+    identifies which one is higher, and returns that value along with the corresponding drug class.
+    This method used to take decisions on hdl
+
+    Args:
+        pred_sglt (float): The predicted response value for the SGLT drug class.
+        pred_dpp (float): The predicted response value for the DPP drug class.
+
+    Returns:
+        tuple: A tuple containing:
+            - max_difference (float): The highest predicted response value between SGLT and DPP.
+            - drug_class (int): An integer representing the drug class corresponding to the highest value 
+                                (1 for SGLT, 0 for DPP).
+    """
+    
     values = [pred_sglt, pred_dpp]
     max_index = values.index(max(values))
     max_difference = [pred_sglt, pred_dpp][max_index]
-    drug_class = [sglt_val, dpp_val][max_index]
+    drug_class = [SGLT_VALUE, DPP_VALUE][max_index]
     return max_difference, drug_class
 
 #### new change
 def find_closest_to_42(pred_sglt, pred_dpp):
-    sglt_val = 1
-    dpp_val = 0
+    
+    """
+    Finds the predicted response value closest to 42 between SGLT and DPP drug classes. This method only use for hba1c.
+    But in this experiment, we did not use this method
+
+    This function takes the predicted response values for both SGLT and DPP drug classes,
+    determines which value is closest to 42, and returns that value along with the corresponding drug class.
+
+    Args:
+        pred_sglt (float): The predicted response value for the SGLT drug class.
+        pred_dpp (float): The predicted response value for the DPP drug class.
+
+    Returns:
+        tuple: A tuple containing:
+            - closest_value (float): The predicted response value closest to 42.
+            - drug_class (int): An integer representing the drug class corresponding to the closest value 
+                                (1 for SGLT, 0 for DPP).
+    """
+    
     values = [pred_sglt, pred_dpp]
-    drug_classes = [sglt_val, dpp_val]
+    drug_classes = [SGLT_VALUE, DPP_VALUE]
     max_index = min(range(len(values)), key=lambda i: abs(values[i] - 42.0))
     closest_value = values[max_index]
     drug_class = drug_classes[max_index]
     return closest_value, drug_class
 
 def predict_drug_classes(model, X_test, Y_train):
-    X = X_test.copy()
+    
+    """
+    Predicts drug classes and associated changes in response variables for a given test dataset.
+
+    This function utilizes a trained model to make predictions for different drug classes (SGLT and DPP)
+    based on the input test data. It assigns the drug class that results in the highest or lowest predicted
+    change in response variables (HbA1c, LDL, HDL, and BMI) for each patient in the test dataset.
+
+    Args:
+        model (object): The trained model used for making predictions.
+        X_test (DataFrame): The test dataset containing features, including drug class information.
+        Y_train (DataFrame): The training dataset containing target variables.
+
+    Returns:
+        DataFrame: A copy of the input test dataset with assigned drug classes and predicted change for all response
+        variables
+    """
     X_test_copy = X_test.copy()
-    X_test_copy['assigned_drug_hba1c'] = np.nan
-    X_test_copy['predicted_change_hba1c'] = np.nan
-    X_test_copy['assigned_drug_ldl'] = np.nan
-    X_test_copy['predicted_change_ldl'] = np.nan
-    X_test_copy['assigned_drug_hdl'] = np.nan
-    X_test_copy['predicted_change_hdl'] = np.nan
-    X_test_copy['assigned_drug_bmi'] = np.nan
-    X_test_copy['predicted_change_bmi'] = np.nan
-        
-    assigned_drug_class_list = [np.nan] * Y_train.shape[1]
-    max_change_list = [np.nan] * Y_train.shape[1]
-        
-    for index, row in X.iterrows():
+    
+    response_vars = ['hba1c', 'ldl', 'hdl', 'bmi']
+    for var in response_vars:
+        X_test_copy[f'assigned_drug_{var}'] = np.nan
+        X_test_copy[f'predicted_change_{var}'] = np.nan
+
+    # Iterate over each row in the test set
+    for index, row in X_test.iterrows():
         drug_class = row['drug_class']
+        pred_sglt, pred_dpp = pred_all(model, row, drug_class)
 
-        pred_original = model.predict(row.values[None])[0]
-        pred_sglt, pred_dpp = pred_all(model, row, drug_class) 
-
-        for j in range(Y_train.shape[1]):
-            if (Y_train.iloc[:,j].name == 'hdl_12m'):
-                temp_max_change, temp_assigned_drug_class = find_highest_respponse_value(pred_sglt[j], pred_dpp[j])
+        # Process predictions for each response variable
+        for j, var in enumerate(response_vars):
+            if var == 'hdl':
+                max_change, assigned_drug_class = find_highest_respponse_value(pred_sglt[j], pred_dpp[j])
             else:
-                temp_max_change, temp_assigned_drug_class = find_lowest_respponse_value(pred_sglt[j], pred_dpp[j])
-                
-            max_change_list[j] = temp_max_change
-            assigned_drug_class_list[j] = temp_assigned_drug_class
-                
-        X_test_copy.at[index, 'assigned_drug_hba1c'] = assigned_drug_class_list[0]
-        X_test_copy.at[index, 'predicted_change_hba1c'] = max_change_list[0]
+                max_change, assigned_drug_class = find_lowest_respponse_value(pred_sglt[j], pred_dpp[j])
 
-        X_test_copy.at[index, 'assigned_drug_ldl'] = assigned_drug_class_list[1]
-        X_test_copy.at[index, 'predicted_change_ldl'] = max_change_list[1]
+            X_test_copy.at[index, f'assigned_drug_{var}'] = assigned_drug_class
+            X_test_copy.at[index, f'predicted_change_{var}'] = max_change
 
-        X_test_copy.at[index, 'assigned_drug_hdl'] = assigned_drug_class_list[2]
-        X_test_copy.at[index, 'predicted_change_hdl'] = max_change_list[2]
-
-        X_test_copy.at[index, 'assigned_drug_bmi'] = assigned_drug_class_list[3]
-        X_test_copy.at[index, 'predicted_change_bmi'] = max_change_list[3]
     return X_test_copy
     
 def print_strata_stats(dpp_strata_actual, sglt_strata_actual, dpp_strata_hba1c, sglt_strata_hba1c, dpp_strata_ldl, sglt_strata_ldl,
                        dpp_strata_hdl, sglt_strata_hdl, dpp_strata_bmi, sglt_strata_bmi):
+    
+    """
+    Prints statistics about sample counts in test data and assigned samples for various response variables.
+
+    This function displays the number of samples in the test dataset for two drug classes (DPP4 and SGLT2),
+    along with the counts of samples assigned for HBA1C, LDL, HDL, and BMI for both drug classes.
+
+    Args:
+        dpp_strata_actual (DataFrame): Samples in the test dataset for the DPP4 class.
+        sglt_strata_actual (DataFrame): Samples in the test dataset for the SGLT2 class.
+        dpp_strata_hba1c (DataFrame): Assigned samples for HBA1C for the DPP4 class.
+        sglt_strata_hba1c (DataFrame): Assigned samples for HBA1C for the SGLT2 class.
+        dpp_strata_ldl (DataFrame): Assigned samples for LDL for the DPP4 class.
+        sglt_strata_ldl (DataFrame): Assigned samples for LDL for the SGLT2 class.
+        dpp_strata_hdl (DataFrame): Assigned samples for HDL for the DPP4 class.
+        sglt_strata_hdl (DataFrame): Assigned samples for HDL for the SGLT2 class.
+        dpp_strata_bmi (DataFrame): Assigned samples for BMI for the DPP4 class.
+        sglt_strata_bmi (DataFrame): Assigned samples for BMI for the SGLT2 class.
+    """
+    
     print(' Sample count in test data')
     print(' number of dpp4 samples in test dataset : ', dpp_strata_actual.shape[0])
     print(' number of sglt2 samples in test dataset : ', sglt_strata_actual.shape[0])
@@ -624,22 +761,43 @@ def print_strata_stats(dpp_strata_actual, sglt_strata_actual, dpp_strata_hba1c, 
     print(' number of sglt2 assigned : ', sglt_strata_bmi.shape[0])
 
 def get_strata(df, drug_col, drug_value):
-        """
-        Extracts a subset of the DataFrame where the values in a specified column match a given drug value.
+    
+    """
+    Extracts a subset of the DataFrame where the values in a specified column match a given drug value.
         
-        Args:
-            df (DataFrame): The input DataFrame from which to extract a subset.
-            drug_col (int): The column in the DataFrame representing the assigned drug or drug-related feature.
-            drug_value (int): The value to match in the specified drug column (e.g., DPP_VALUE, SGLT_VALUE).
+    Args:
+        df (DataFrame): The input DataFrame from which to extract a subset.
+        drug_col (int): The column in the DataFrame representing the assigned drug or drug-related feature.
+        drug_value (int): The value to match in the specified drug column (e.g., DPP_VALUE, SGLT_VALUE).
 
-        Returns:
-            DataFrame: A subset of the input DataFrame where the values in 'drug_col' match 'drug_value'.
-        """
-        return df[df[drug_col] == drug_value]
+    Returns:
+        DataFrame: A subset of the input DataFrame where the values in 'drug_col' match 'drug_value'.
+    """
+    
+    return df[df[drug_col] == drug_value]
     
 def check_aggreement(df, discordant_1, data, variable_name):
     
-    concordant_glp = pd.DataFrame(columns=data.columns)
+    """
+    Checks the agreement between drug class assignments and specified variable values in the dataset.
+
+    This function separates the dataset into concordant and discordant subsets based on the specified 
+    variable and the drug class. It returns two DataFrames: one containing rows where the variable matches 
+    the drug class (concordant) and another containing rows that are discordant with respect to the specified 
+    discordant drug class.
+
+    Args:
+        df (DataFrame): The input DataFrame containing drug class assignments and other relevant data.
+        discordant_1 (str): The drug class to be considered as discordant.
+        data (DataFrame): A DataFrame used to ensure the concordant DataFrame has the same columns.
+        variable_name (str): The name of the column in `df` to check for agreement with the drug class.
+
+    Returns:
+        tuple: A tuple containing:
+            - concordant (DataFrame): DataFrame of rows where the variable matches the drug class.
+            - discordant_df_1 (DataFrame): DataFrame of rows that are discordant with respect to `discordant_1`.
+    """
+    
     discordant_df_1 = pd.DataFrame(columns=data.columns)
 
     concordant = df[df[variable_name] == df['drug_class']]
@@ -649,14 +807,35 @@ def check_aggreement(df, discordant_1, data, variable_name):
 
 def get_concordant_discordant(dpp_strata,sglt_strata, data, dpp_strata_actual, sglt_strata_actual, variable_name):
 
-    sglt_val = 1
-    dpp_val = 0
+    """
+    Analyzes the concordance and discordance between predicted drug classes and actual drug classes in the dataset.
+
+    This function compares the assigned drug classes (DPP and SGLT) to the actual drug classes in the provided strata,
+    calculates counts and percentages of concordant and discordant samples, and prints a summary table with the results.
+    It also checks for agreements using the `check_aggreement` function.
+
+    Args:
+        dpp_strata (DataFrame): The DataFrame containing the DPP-strata data to analyze.
+        sglt_strata (DataFrame): The DataFrame containing the SGLT-strata data to analyze.
+        data (DataFrame): The dataset containing drug class assignments and other relevant variables.
+        dpp_strata_actual (DataFrame): The actual DPP-strata data for comparison.
+        sglt_strata_actual (DataFrame): The actual SGLT-strata data for comparison.
+        variable_name (str): The name of the column used to check for agreement with the drug class.
+
+    Returns:
+        tuple: A tuple containing:
+            - concordant_dpp (DataFrame): DataFrame of concordant DPP samples.
+            - discordant_dpp_sglt (DataFrame): DataFrame of discordant DPP samples that were assigned SGLT.
+            - concordant_sglt (DataFrame): DataFrame of concordant SGLT samples.
+            - discordant_sglt_dpp (DataFrame): DataFrame of discordant SGLT samples that were assigned DPP.
+    """
+    
     # discordant_dpp_sglt = received SGLT actually but model assigned DPP
     # discordant_sglt_dpp = received DPP in real life but our model assigned SGLT
     
-    concordant_dpp, discordant_dpp_sglt = check_aggreement(dpp_strata, sglt_val, data, variable_name)
+    concordant_dpp, discordant_dpp_sglt = check_aggreement(dpp_strata, SGLT_VALUE, data, variable_name)
 
-    concordant_sglt, discordant_sglt_dpp = check_aggreement(sglt_strata, dpp_val, data, variable_name)
+    concordant_sglt, discordant_sglt_dpp = check_aggreement(sglt_strata, DPP_VALUE, data, variable_name)
 
     print(" =========== Total number of samples assigned by the model VS Total number of samples in original test data")
     print('DPP samples ', concordant_dpp.shape[0]+discordant_dpp_sglt.shape[0],  dpp_strata_actual.shape[0])
@@ -693,11 +872,29 @@ def get_concordant_discordant(dpp_strata,sglt_strata, data, dpp_strata_actual, s
     print(tabulate(data, headers=["Category","Real value", "Predicted value",  "Count", "Percentage of Predicted cases"]))
     print('\n')
     
-    return ( concordant_dpp, discordant_dpp_sglt,
-            concordant_sglt, discordant_sglt_dpp)
+    return (concordant_dpp, discordant_dpp_sglt, concordant_sglt, discordant_sglt_dpp)
 
 def print_change_mean(concordant_dpp, discordant_dpp_sglt,
             concordant_sglt, discordant_sglt_dpp, response_variable):
+    
+    """
+    Prints the average change in the response variable for concordant and discordant drug class predictions.
+
+    This function calculates and displays the mean of the specified response variable for each of the following groups:
+    concordant DPP, discordant DPP assigned SGLT, concordant SGLT, and discordant SGLT assigned DPP. The results are
+    displayed in a tabulated format for easy comparison of the average changes between these groups.
+
+    Args:
+        concordant_dpp (DataFrame): DataFrame containing samples where DPP was predicted and matched the actual class.
+        discordant_dpp_sglt (DataFrame): DataFrame containing samples where DPP was predicted but SGLT was the actual class.
+        concordant_sglt (DataFrame): DataFrame containing samples where SGLT was predicted and matched the actual class.
+        discordant_sglt_dpp (DataFrame): DataFrame containing samples where SGLT was predicted but DPP was the actual class.
+        response_variable (str): The name of the response variable (column) for which to calculate the mean change.
+
+    Returns:
+        None: This function prints the average change for each group and does not return a value.
+    """
+    
     # calculate average response. best average should be in concordant group
     print('-------- Average Change --------')
 
@@ -713,9 +910,7 @@ def print_change_mean(concordant_dpp, discordant_dpp_sglt,
         ["Discordant", "DPP", "SGLT", discordant_sglt_dpp_mean],
         ['','','','',''],
         ["Concordant", "DPP", "DPP", concordant_dpp_mean],
-        ["Discordant", "SGLT", "DPP", discordant_dpp_sglt_mean],
-        
-        
+        ["Discordant", "SGLT", "DPP", discordant_dpp_sglt_mean],        
     ]
 
     # Print the table
@@ -724,7 +919,22 @@ def print_change_mean(concordant_dpp, discordant_dpp_sglt,
     print('\n')
 
 def get_perc(variable_1, variable_2):
-    normal = 42.0
+    
+    """
+    Calculates the mean and standard deviation of the difference between two variables.
+
+    This function computes the mean and standard deviation of the difference between two input variables.
+
+    Args:
+        variable_1 (ndarray): The first variable.
+        variable_2 (ndarray): The second variable.
+
+    Returns:
+        tuple: A tuple containing:
+            - mean (float): The mean of the difference between `variable_1` and `variable_2`.
+            - std (float): The standard deviation of the difference between `variable_1` and `variable_2`.
+    """
+    
     std = (variable_1-variable_2).std()
     mean = (variable_1-variable_2).mean()
     return mean, std

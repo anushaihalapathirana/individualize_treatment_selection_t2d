@@ -761,15 +761,11 @@ class BaseModel:
         calculate_change_diff(concordant_dpp_hdl, discordant_dpp_sglt_hdl, concordant_sglt_hdl, discordant_sglt_dpp_hdl,
                             'hdl_12m', 'hdl', 'predicted_change_hdl')
 
-
-
-        
         print('BMI')
         (concordant_dpp_bmi, discordant_dpp_sglt_bmi,
             concordant_sglt_bmi, discordant_sglt_dpp_bmi ) = get_concordant_discordant(dpp_df_bmi,sglt_df_bmi, data,
                                                                                         dpp_strata_actual, sglt_strata_actual,
                                                                                         variable_name = 'assigned_drug_bmi')
-
         print('\n============= BMI ===================')    
         print_change_mean(concordant_dpp_bmi, discordant_dpp_sglt_bmi,
                     concordant_sglt_bmi, discordant_sglt_dpp_bmi, response_variable = 'bmi_12m')
@@ -805,6 +801,7 @@ class BaseModel:
         calculate_percentage_change(concordant_dpp_bmi, discordant_dpp_sglt_bmi,
                     concordant_sglt_bmi, discordant_sglt_dpp_bmi,  response_variable = 'bmi_12m', baseline_val='bmi' )
     
+
 if __name__ == "__main__":
     print("Initialte optimal model training...")
     baseModel = BaseModel()
