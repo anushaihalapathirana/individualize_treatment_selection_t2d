@@ -1215,6 +1215,28 @@ def check_distribution(df, df_act, response_variable, predicted_change):
     return outliers_act, outliers_pred
     
 def plot_scatter(df, df_act, df2, df_act2, baseline_val, predicted_change, response_variable):
+    
+    """
+    Creates scatter and box plots to visualize observed and predicted values for two different drug classes (DPP and SGLT).
+
+    This function sets up a 2x2 subplot layout:
+    1. The first row contains box plots comparing observed and predicted values for DPP.
+    2. The second row contains scatter plots of observed versus predicted values, along with fitted lines for 
+    both drug classes.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing predicted values and baseline information for DPP.
+        df_act (pd.DataFrame): DataFrame containing actual values and baseline information for DPP.
+        df2 (pd.DataFrame): DataFrame containing predicted values and baseline information for SGLT.
+        df_act2 (pd.DataFrame): DataFrame containing actual values and baseline information for SGLT.
+        baseline_val (str): Name of the column representing the baseline value.
+        predicted_change (str): Name of the column representing the predicted change in response variable.
+        response_variable (str): Name of the column representing the response variable.
+
+    Save:
+        The plot is displayed and save as an image file.
+    """
+    
     # Set up the figure with two rows and two columns of subplots
     fig, axs = plt.subplots(2, 2, figsize=(12, 10))
 
@@ -1263,13 +1285,35 @@ def plot_scatter(df, df_act, df2, df_act2, baseline_val, predicted_change, respo
     plt.tight_layout()
 
     # Save the plot as an image file for inclusion in the research paper
-    #plt.savefig('scatter_plot_research_paper.png', dpi=300)
+    plt.savefig('scatter_plot_research_paper.png', dpi=300)
 
     # Show the plot
     plt.show()
 
 
 def plot_scatter_with_CI(df, df_act, df2, df_act2, baseline_val, predicted_change, response_variable):
+    
+    """
+    Plots scatter plots and box plots comparing observed and predicted values.
+
+    This function creates a 2x2 subplot layout:
+    1. The first row contains box plots comparing observed and predicted values for DPP and SGLT.
+    2. The second row contains scatter plots with regression lines showing the relationship between the
+    baseline value and the response variable for both DPP and SGLT (with confidence interval).
+
+    Args:
+        df (DataFrame): DataFrame containing predicted values and baseline information for DPP.
+        df_act (DataFrame): DataFrame containing actual values and baseline information for DPP.
+        df2 (DataFrame): DataFrame containing predicted values and baseline information for SGLT.
+        df_act2 (DataFrame): DataFrame containing actual values and baseline information for SGLT.
+        baseline_val (str): Name of the column representing the baseline value.
+        predicted_change (str): Name of the column representing the predicted change in response variable.
+        response_variable (str): Name of the column representing the response variable.
+
+    Saves:
+        An image file of the plot with a resolution of 300 DPI.
+    """
+    
     # Set up the figure with two rows and two columns of subplots
     fig, axs = plt.subplots(2, 2, figsize=(12, 10))
 
@@ -1311,7 +1355,29 @@ def plot_scatter_with_CI(df, df_act, df2, df_act2, baseline_val, predicted_chang
 
 
 def drug_class_visualization(df, df_act, df2, df_act2, response_variable, predicted_change, assigned_drug, baseline_val):
-    # glp strata predicted by the model
+    
+    """
+    Visualizes the drug class data by comparing predicted and actual response values.
+
+    This function performs the following steps:
+    1. Extracts relevant columns from the provided DataFrames for both predicted and actual drug classes.
+    2. Identifies outliers in both the predicted and actual datasets using a distribution check.
+    3. Drops the outlier entries from the datasets.
+    4. Plots a scatter plot comparing the predicted and actual values of the response variable for both drug classes.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing predicted values and drug class information.
+        df_act (pd.DataFrame): DataFrame containing actual values and drug class information.
+        df2 (pd.DataFrame): Second DataFrame for comparison, containing predicted values and drug class information.
+        df_act2 (pd.DataFrame): Second DataFrame for comparison, containing actual values and drug class information.
+        response_variable (str): Name of the column representing the response variable.
+        predicted_change (str): Name of the column representing the predicted change in response variable.
+        assigned_drug (str): Name of the column representing the assigned drug class.
+        baseline_val (str): Name of the column representing the baseline value.
+
+    Returns:
+        pd.DataFrame: The modified DataFrame with outliers removed.
+    """
     
     df_ = df[[response_variable, predicted_change, 'drug_class', assigned_drug, baseline_val]]
     df_2 = df2[[response_variable, predicted_change, 'drug_class', assigned_drug, baseline_val]]
@@ -1334,11 +1400,29 @@ def drug_class_visualization(df, df_act, df2, df_act2, response_variable, predic
     return df_new
 
 def drug_class_outlier_remove(df, df_act, response_variable, predicted_change, assigned_drug, baseline_val):
-    # glp strata predicted by the model
+    
+    """
+    Removes outliers based on the drug class from the predicted and actual datasets.
+
+    This function identifies outliers in the predicted and actual datasets based on the specified response variable 
+    and the predicted change. It removes these outliers from both the predicted and actual datasets, ensuring that 
+    the final dataset excludes these extreme values.
+
+    Args:
+        df (DataFrame): The predicted dataset containing the response variable, predicted change, 
+                        drug class, assigned drug, and baseline values.
+        df_act (DataFrame): The actual dataset containing the same columns as df for comparison.
+        response_variable (str): The name of the response variable to evaluate.
+        predicted_change (str): The name of the column containing predicted changes.
+        assigned_drug (str): The name of the column indicating the assigned drug class.
+        baseline_val (str): The name of the column representing baseline values.
+
+    Returns:
+        DataFrame: A new DataFrame with outliers removed based on the drug class from the original predicted dataset.
+    """
+    
     df_ = df[[response_variable, predicted_change, 'drug_class', assigned_drug, baseline_val]]
-    # glp strata in real
-    df_act_ = df_act[[response_variable
-                      , predicted_change, 'drug_class', assigned_drug, baseline_val]]
+    df_act_ = df_act[[response_variable, predicted_change, 'drug_class', assigned_drug, baseline_val]]
 
     outliers_act, outliers_pred = check_distribution(df_, df_act_, response_variable, predicted_change)
     
