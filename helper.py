@@ -20,17 +20,25 @@ from sklearn.multioutput import MultiOutputRegressor
 from constants import SEED, SGLT_VALUE, DPP_VALUE
 
 
-def read_data(file_path):
+def read_data(file_path, sep = ',', decimal = '.', encoding = 'utf-8', engine ='python', index_col=0):
     
     """Read training data file
 
+    Args:
+        file_path: Path to file
+        sep: Seperation symbol default to comma. 
+        decimal: Which symbol represent decimal. Default to '.'
+        encoding: Default to 'utf-8'
+        engine: Default to 'python'
+        index_col: Row number(s) containing column labels and marking the start of the data. Default to 0
+        
     Returns:
         df: dataframe
     """
         
-    df = pd.read_csv(file_path, sep = ',',decimal = '.', encoding = 'utf-8', engine ='python', index_col=0)
+    df = pd.read_csv(file_path, sep = sep ,decimal = decimal, encoding = encoding, engine = engine, index_col=index_col)
     return df
-    
+   
 def get_nan_count(df):
     
     """Print NaN count in selected columns
