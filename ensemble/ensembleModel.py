@@ -7,13 +7,12 @@ import sys
 import os
 from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score
 
-from utils import calculate_accuracy, ensemble_based_on_majority, find_optimal_threshold, get_concordant_discordant, \
-    calculate_change_diff
+from utils import calculate_accuracy, ensemble_based_on_majority, find_optimal_threshold, calculate_change_diff
     
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  
 
 from constants import FEATURE_IMPORTANCE_DF_LOCATION, PREDICTED_DRUG_CLASS_FILE_LOCATION, DPP_VALUE, SGLT_VALUE
-from helper import read_data, calculate_percentage_change
+from helper import read_data, calculate_percentage_change, get_concordant_discordant
 
 class EnsembleModel:
     
