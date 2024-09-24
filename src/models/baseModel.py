@@ -23,7 +23,8 @@ from helper import read_data, preprocess, get_test_train_data, get_features_kbes
 from constants import COMMON_VARIABLE_PATH, SEED, TEST_PATH_WO_LDL_IMPUTATION, TRAIN_PATH_WO_LDL_IMPUTATION, DPP_VALUE,\
     SGLT_VALUE, SCATTER_PLOT_ACTUAL_VS_PRED, SHAP_SUMMARY_PLOT_HBA1C, SHAP_SUMMARY_PLOT_LDL, SHAP_SUMMARY_PLOT_HDL,\
     SHAP_SUMMARY_PLOT_BMI, IMAGE_FONT_SIZE_24, IMAGE_LABEL_SIZE_24, IMAGE_DPI_300, IMAGE_FONT_SIZE_18, IMAGE_FONT_SIZE_14,\
-    PREDICTED_DRUG_CLASS_FILE_LOCATION, PREPROCESSED_DATA_FILE_LOCATION, FEATURE_IMPORTANCE_DF_LOCATION
+    PREDICTED_DRUG_CLASS_FILE_LOCATION, PREPROCESSED_DATA_FILE_LOCATION, FEATURE_IMPORTANCE_DF_LOCATION, SCATTER_BOX_PLOT_HBA1C,\
+    SCATTER_BOX_PLOT_LDL, SCATTER_BOX_PLOT_HDL, SCATTER_BOX_PLOT_BMI
 
 warnings.filterwarnings('ignore')
 
@@ -50,6 +51,10 @@ class BaseModel:
             file_path_preprocessed_data_file (str): Absolute path to the preprocessed data file.
             file_path_feature_importance_df_file (str): Absolute path to the file containing feature importance data.
             path_to_scatter_plot_actual_vs_pred (str): Absolute path to the scatter plot image of actual vs predicted values.
+            path_to_scatter_box_plot_hba1c (str): Absolute path to the scatter and box plot image of hba1c actual vs predicted values.
+            path_to_scatter_box_plot_ldl (str): Absolute path to the scatter and box plot image of ldl actual vs predicted values.
+            path_to_scatter_box_plot_hdl (str): Absolute path to the scatter and box plot image of hdl actual vs predicted values.
+            path_to_scatter_box_plot_bmi (str): Absolute path to the scatter and box plot image of bmi actual vs predicted values.
             path_to_shap_sp_hba1c (str): Absolute path to the SHAP summary plot image for HbA1c.
             path_to_shap_sp_ldl (str): Absolute path to the SHAP summary plot image for LDL.
             path_to_shap_sp_hdl (str): Absolute path to the SHAP summary plot image for HDL.
@@ -79,6 +84,10 @@ class BaseModel:
                 'preprocessed_data': os.path.join("../../", PREPROCESSED_DATA_FILE_LOCATION),
                 'feature_importance': os.path.join("../../", FEATURE_IMPORTANCE_DF_LOCATION),
                 'scatter_plot': os.path.join("../../", SCATTER_PLOT_ACTUAL_VS_PRED),
+                'scatter_box_plot_hba1c': os.path.join("../../", SCATTER_BOX_PLOT_HBA1C),
+                'scatter_box_plot_ldl': os.path.join("../../", SCATTER_BOX_PLOT_LDL),
+                'scatter_box_plot_hdl': os.path.join("../../", SCATTER_BOX_PLOT_HDL),
+                'scatter_box_plot_bmi': os.path.join("../../", SCATTER_BOX_PLOT_BMI),
                 'shap_hba1c': os.path.join("../../", SHAP_SUMMARY_PLOT_HBA1C),
                 'shap_ldl': os.path.join("../../", SHAP_SUMMARY_PLOT_LDL),
                 'shap_hdl': os.path.join("../../", SHAP_SUMMARY_PLOT_HDL),
@@ -93,6 +102,10 @@ class BaseModel:
             self.file_path_preprocessed_data_file = os.path.abspath(os.path.join(self.script_directory, relative_paths['preprocessed_data']))
             self.file_path_feature_importance_df_file = os.path.abspath(os.path.join(self.script_directory, relative_paths['feature_importance']))
             self.path_to_scatter_plot_actual_vs_pred = os.path.abspath(os.path.join(self.script_directory, relative_paths['scatter_plot']))
+            self.path_to_scatter_box_plot_hba1c = os.path.abspath(os.path.join(self.script_directory, relative_paths['scatter_box_plot_hba1c']))
+            self.path_to_scatter_box_plot_ldl = os.path.abspath(os.path.join(self.script_directory, relative_paths['scatter_box_plot_ldl']))
+            self.path_to_scatter_box_plot_hdl = os.path.abspath(os.path.join(self.script_directory, relative_paths['scatter_box_plot_hdl']))
+            self.path_to_scatter_box_plot_bmi = os.path.abspath(os.path.join(self.script_directory, relative_paths['scatter_box_plot_bmi']))
             self.path_to_shap_sp_hba1c = os.path.abspath(os.path.join(self.script_directory, relative_paths['shap_hba1c']))
             self.path_to_shap_sp_ldl = os.path.abspath(os.path.join(self.script_directory, relative_paths['shap_ldl']))
             self.path_to_shap_sp_hdl = os.path.abspath(os.path.join(self.script_directory, relative_paths['shap_hdl']))
@@ -645,22 +658,22 @@ class BaseModel:
                                             response_variable='hba1c_12m', 
                                             predicted_change='predicted_change_hba1c',
                                             assigned_drug='assigned_drug_hba1c',
-                                            baseline_val='hba1c_bl_6m')
+                                            baseline_val='hba1c_bl_6m', file_path = self.path_to_scatter_box_plot_hba1c)
         df_ldl_ = drug_class_visualization(dpp_strata_ldl, dpp_strata_actual, sglt_strata_ldl,sglt_strata_actual,
                                         response_variable='ldl_12m', 
                                         predicted_change='predicted_change_ldl',
                                         assigned_drug='assigned_drug_ldl',
-                                        baseline_val='ldl')
+                                        baseline_val='ldl', file_path = self.path_to_scatter_box_plot_ldl)
         df_hdl_ = drug_class_visualization(dpp_strata_hdl, dpp_strata_actual, sglt_strata_hdl,sglt_strata_actual,
                                         response_variable='hdl_12m', 
                                         predicted_change='predicted_change_hdl',
                                         assigned_drug='assigned_drug_hdl',
-                                        baseline_val='hdl')
+                                        baseline_val='hdl', file_path = self.path_to_scatter_box_plot_hdl)
         df_bmi_ = drug_class_visualization(dpp_strata_bmi, dpp_strata_actual, sglt_strata_bmi,sglt_strata_actual,
                                         response_variable='bmi_12m', 
                                         predicted_change='predicted_change_bmi',
                                         assigned_drug='assigned_drug_bmi',
-                                        baseline_val='bmi')
+                                        baseline_val='bmi', file_path = self.path_to_scatter_box_plot_bmi)
 
         # remove outliers in predicted values
         dpp_df_hba1c = drug_class_outlier_remove(dpp_strata_hba1c, dpp_strata_actual, 'hba1c_12m','predicted_change_hba1c',

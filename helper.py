@@ -1222,7 +1222,7 @@ def check_distribution(df, df_act, response_variable, predicted_change):
 
     return outliers_act, outliers_pred
     
-def plot_scatter(df, df_act, df2, df_act2, baseline_val, predicted_change, response_variable):
+def plot_scatter(df, df_act, df2, df_act2, baseline_val, predicted_change, response_variable, file_path):
     
     """
     Creates scatter and box plots to visualize observed and predicted values for two different drug classes (DPP and SGLT).
@@ -1293,7 +1293,7 @@ def plot_scatter(df, df_act, df2, df_act2, baseline_val, predicted_change, respo
     plt.tight_layout()
 
     # Save the plot as an image file for inclusion in the research paper
-    plt.savefig('scatter_plot_research_paper.png', dpi=300)
+    plt.savefig(file_path, dpi=300)
 
     # Show the plot
     plt.show()
@@ -1362,7 +1362,7 @@ def plot_scatter_with_CI(df, df_act, df2, df_act2, baseline_val, predicted_chang
     plt.show()
 
 
-def drug_class_visualization(df, df_act, df2, df_act2, response_variable, predicted_change, assigned_drug, baseline_val):
+def drug_class_visualization(df, df_act, df2, df_act2, response_variable, predicted_change, assigned_drug, baseline_val, file_path):
     
     """
     Visualizes the drug class data by comparing predicted and actual response values.
@@ -1402,7 +1402,7 @@ def drug_class_visualization(df, df_act, df2, df_act2, response_variable, predic
     df_2 = df_2.drop(outliers_pred2)
     df_act_2 = df_act_2.drop(outliers_act2)
 
-    plot_scatter(df_, df_act_,df_2,df_act_2, baseline_val, predicted_change, response_variable)
+    plot_scatter(df_, df_act_,df_2,df_act_2, baseline_val, predicted_change, response_variable, file_path)
     
     df_new = df.drop(outliers_pred)
     return df_new
