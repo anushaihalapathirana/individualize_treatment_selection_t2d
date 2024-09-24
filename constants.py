@@ -16,6 +16,9 @@ SHAP_SUMMARY_PLOT_LDL = 'resources/img/shap_summary_plot_ldl.jpeg'
 SHAP_SUMMARY_PLOT_HDL = 'resources/img/shap_summary_plot_hdl.jpeg'
 SHAP_SUMMARY_PLOT_BMI = 'resources/img/shap_summary_plot_bmi.jpeg'
 
+BEST_MODELS_DIRECTORY = 'src/models/best_models'
+ENSEMBLE_PYTHON_FILE_PATH = 'ensemble/ensembleModel.py'
+
 TRAIN_PATH = 'data/train.csv'
 TEST_PATH = 'data/test.csv'
 

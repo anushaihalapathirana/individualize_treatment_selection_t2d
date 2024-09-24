@@ -41,11 +41,11 @@ class EnsembleModel:
             self.file_path_feature_importance_df_file = os.path.abspath(os.path.join(self.script_directory, relative_paths['feature_importance']))
             self.file_path_predicted_drug_file = os.path.abspath(os.path.join(self.script_directory, relative_paths['predicted_drug']))
 
-        except Exception as e:
-            print(f"An error occurred during initialization: {e}")
-            raise
+        except FileNotFoundError:
+            raise FileNotFoundError(f"File not found")
 
     def get_relavant_data(self):
+        
         """
         Reads data from specified file paths and returns relevant dataframes for drug predictions and feature importance.
 
