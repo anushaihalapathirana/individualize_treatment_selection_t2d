@@ -21,7 +21,9 @@ SHAP_SUMMARY_PLOT_HDL = 'resources/img/shap_summary_plot_hdl.jpeg'
 SHAP_SUMMARY_PLOT_BMI = 'resources/img/shap_summary_plot_bmi.jpeg'
 
 BEST_MODELS_DIRECTORY = 'src/models/best_models'
+BEST_MODELS_NOTEBOOKS_DIRECTORY = 'src/models/notebooks'
 ENSEMBLE_PYTHON_FILE_PATH = 'ensemble/ensembleModel.py'
+ENSEMBLE_PYTHON_NOTEBOOK_PATH = 'ensemble_models.ipynb'
 
 TRAIN_PATH = 'data/train.csv'
 TEST_PATH = 'data/test.csv'
