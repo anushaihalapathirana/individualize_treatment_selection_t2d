@@ -1,8 +1,8 @@
 DATA_WITHOUT_DATES = 'resources/data/HTx_ind_treat_res_new_data_update_without_dates_08032024.csv'
 DATA_ONLY_DATES = 'resources/data/HTx_ind_treat_res_new_data_update_only_dates_08032024.csv'
 
-TRAIN_PATH_IMPUTED = 'resources/data/train_data.csv.csv'
-TEST_PATH_IMPUTED = 'resources/data/test_data.csv.csv'
+TRAIN_PATH_IMPUTED = 'resources/data/train_data.csv'
+TEST_PATH_IMPUTED = 'resources/data/test_data.csv'
 
 TRAIN_PATH_WO_LDL_IMPUTATION = 'resources/data/train_data_wo_LDL_imputation.csv'
 TEST_PATH_WO_LDL_IMPUTATION = 'resources/data/test_data_wo_LDL_imputation.csv'
