@@ -1,8 +1,11 @@
 import lightgbm as ltb
+import sys
+import os
 from sklearn.ensemble import RandomForestRegressor, VotingRegressor
 from catboost import CatBoostRegressor
 from xgboost.sklearn import XGBRegressor
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from baseModel import BaseModel
 
 class Model2(BaseModel):
