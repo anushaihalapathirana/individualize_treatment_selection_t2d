@@ -24,7 +24,7 @@ Importance-Weighted Aggregation: Each treatment is weighted based on the importa
 
 All the experiments carriedout with Type 2 diabetes dataset.
 
-## Content
+## Directory Structure
 
 - `ensemble/`: Contains code for developing single treatment strategies based on aggregation methods.
 - `imputation/`: Includes code used to impute missing values in response variables.
@@ -34,6 +34,8 @@ All the experiments carriedout with Type 2 diabetes dataset.
     - `img`: Contains figures and visualizations generated during the analysis.
     - `output`: Includes the data generated throughout the analysis and modeling process. (Note: This folder is currently empty due to privacy agreements regarding data usage.)
 - `src/`: Contains code for training, evaluating, and analyzing the performance of machine learning models and SHAP explanations.
+- `notebooks/`: This directory contains Jupyter notebook versions of the Python scripts. The notebooks in this directory replicate the functionality of the corresponding `.py` files, except for the notebooks located in the `Other models/` directory. The `Other models/` directory contains notebooks that do not have corresponding `.py` files.
+
 
 ## Usage
 
