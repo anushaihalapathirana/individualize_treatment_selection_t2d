@@ -6,7 +6,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from utils import get_nan_count, get_missing_val_percentage, get_dfs, countUsers
+from utils import get_nan_count, get_missing_val_percentage, get_dfs, countUsers, remove_outliers
 
 def test_get_nan_count_mix_nan():
     # Creating a sample dataframe for testing

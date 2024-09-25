@@ -5,19 +5,12 @@ import os
 import sys
 
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import train_test_split, KFold
-from sklearn.feature_selection import RFE, SelectKBest, mutual_info_regression
-from sklearn.ensemble import RandomForestRegressor
-import statsmodels.regression.linear_model as sm
-from skrebate import ReliefF
+from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import mean_squared_error
-
-from sklearn.multioutput import MultiOutputRegressor
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from helper import outlier_detect, get_model_name
+from helper import outlier_detect
 
 def read_data(file_path):
         """Read training data file
@@ -186,31 +179,31 @@ def print_sample_count(df, dpp_val, sglt_val, label = ''):
     print(' number of sglt2 : ', countUsers(sglt_val, df))
     
 def remove_outliers(X_train, X_test, Y_train, Y_test, response_variable_list):
-        ################# OUTLIER ################
-        print('Shape of training data before removing outliers:', np.shape(X_train))
-        print('Shape of test data before removing outliers:', np.shape(X_test))
+    ################# OUTLIER ################
+    print('Shape of training data before removing outliers:', np.shape(X_train))
+    print('Shape of test data before removing outliers:', np.shape(X_test))
             
-        out_train, out_test = outlier_detect(X_train, Y_train, X_test, Y_test)
+    out_train, out_test = outlier_detect(X_train, Y_train, X_test, Y_test)
         
-        train_ = X_train.copy()
-        train_[response_variable_list] = Y_train.values
+    train_ = X_train.copy()
+    train_[response_variable_list] = Y_train.values
             
-        test_ = X_test.copy()
-        test_[response_variable_list] = Y_test.values
+    test_ = X_test.copy()
+    test_[response_variable_list] = Y_test.values
             
-        train_ = pd.DataFrame(train_.drop(out_train, axis = 0))
-        test_ = pd.DataFrame(test_.drop(out_test, axis = 0))
+    train_ = pd.DataFrame(train_.drop(out_train, axis = 0))
+    test_ = pd.DataFrame(test_.drop(out_test, axis = 0))
             
-        Y_train = train_[response_variable_list]
-        X_train = train_.drop(response_variable_list, axis=1)
+    Y_train = train_[response_variable_list]
+    X_train = train_.drop(response_variable_list, axis=1)
             
-        Y_test = test_[response_variable_list]
-        X_test = test_.drop(response_variable_list, axis=1)
+    Y_test = test_[response_variable_list]
+    X_test = test_.drop(response_variable_list, axis=1)
             
-        print('Shape of training data after removing outliers:', np.shape(X_train))
-        print('Shape of test data after removing outliers:', np.shape(X_test))
+    print('Shape of training data after removing outliers:', np.shape(X_train))
+    print('Shape of test data after removing outliers:', np.shape(X_test))
         
-        return X_train, X_test, Y_train, Y_test
+    return X_train, X_test, Y_train, Y_test
 
 def missing_value_prediction(model, df_missing, df_original, selected_features, df_missing_val_original, file_path, target_variable):
     df_missing_val = df_missing[selected_features]
