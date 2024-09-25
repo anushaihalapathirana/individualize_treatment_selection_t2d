@@ -70,6 +70,8 @@ Other high performance model scripts are in the `src/models/best_models` directo
 9. **Run Test Cases**: Ensure pytest is installed. To run the test files, navigate to the directory containing the test files. For example:
     ```bash 
     cd imputation/test
+    cd ensemble/test
+    cd test
     ``````
     Execute the tests using the following command
     ```bash 
