@@ -71,7 +71,8 @@ def preprocess(df, response_variable_list):
     del_cols = ['id', 'date_hba_bl_6m','date_ldl_bl','date_bmi_bl','date_hdl_bl',
                  'date_12m', 'date_n1', 'date_ldl_12m', 'date_bmi_12m', 'date_hdl_12m',
                  'days_hba1c', 'days_bmi', 'days_hdl', 'days_ldl']
-    df = df.drop(del_cols, axis=1)
+
+    df = df.drop(columns=[col for col in del_cols if col in df.columns], axis=1, errors='ignore')
     
     # Define thresholds
     hdl_threshold = 2.5

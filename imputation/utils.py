@@ -10,16 +10,7 @@ from sklearn.impute import SimpleImputer
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from helper import outlier_detect
-
-def read_data(file_path):
-        """Read training data file
-
-        Returns:
-            df: dataframe
-        """
-        df = pd.read_csv(file_path, sep = ',',decimal = '.', encoding = 'utf-8', engine ='python', index_col=0)
-        return df
+from helper import outlier_detect, countUsers
 
 def get_nan_count(df):
     """Print NaN count in selected columns
@@ -166,12 +157,6 @@ def preprocess(df, test_size, target_variable, variables_to_drop):
     
     
     return df, X_train, X_test, Y_train, Y_test, X, Y, scaler, df_missing_val, df_missing_val_original, df_original
- 
-def countUsers(drug_id, df):
-    df_ = df.apply(lambda x : True
-                if x['drug_class'] == drug_id else False, axis = 1)
-    number_of_rows = len(df_[df_ == True].index)
-    return number_of_rows
 
 def print_sample_count(df, dpp_val, sglt_val, label = ''):
     print('==== sample count in '+ label +' data =======')

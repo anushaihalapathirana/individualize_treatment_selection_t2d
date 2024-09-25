@@ -6,7 +6,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from utils import get_nan_count, get_missing_val_percentage, get_dfs, countUsers, remove_outliers
+from utils import get_nan_count, get_missing_val_percentage, get_dfs
 
 def test_get_nan_count_mix_nan():
     # Creating a sample dataframe for testing
@@ -176,39 +176,3 @@ def test_get_dfs_with_wrong_conversion():
     expected_df = pd.DataFrame(expected_data)
     
     pd.testing.assert_frame_equal(result_df.reset_index(drop=True), expected_df)
-
-def test_count_users_with_matching_drug_class():
-    data = {
-        'drug_class': [1, 2, 3, 1, 2, 2],
-        'user_id': [101, 102, 103, 104, 105, 106]
-    }
-    df = pd.DataFrame(data)
-    # Test for drug_class = 1, 2 and 3
-    result_1 = countUsers(1, df)
-    result_2 = countUsers(2, df)
-    result_3 = countUsers(3, df)
-    expected_result_1 = 2  # There are two users with drug_class 1
-    expected_result_2 = 3  # There are three users with drug_class 2
-    expected_result_3 = 1  # There are one users with drug_class 3
-    
-    assert result_1 == expected_result_1
-    assert result_2 == expected_result_2
-    assert result_3 == expected_result_3
-    
-def test_count_users_with_no_matching_drug_class():
-    data = {
-        'drug_class': [1, 2, 3, 1, 2, 2],
-        'user_id': [101, 102, 103, 104, 105, 106]
-    }
-    df = pd.DataFrame(data)
-    # test for drug class 5
-    results = countUsers(5, df)
-    expected_results = 0
-    assert results == expected_results
-    
-def test_count_users_with_empty_dataframe():
-    df_empty = pd.DataFrame(columns=['drug_class', 'user_id'])
-    result = countUsers(1, df_empty)
-    expected_result = 0 
-    assert result == expected_result
-

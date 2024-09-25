@@ -8,8 +8,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from xgboost.sklearn import XGBRegressor
 
 from constants import COMMON_VARIABLE_PATH, BMI_PATH, SEED, TRAIN_PATH
-from helper import cross_val, get_scores
-from utils import preprocess, remove_outliers, read_data, missing_value_prediction
+from helper import cross_val, get_scores, read_data
+from utils import preprocess, remove_outliers, missing_value_prediction
     
 class ImputationBMI:
     
