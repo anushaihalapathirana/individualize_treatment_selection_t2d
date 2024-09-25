@@ -40,13 +40,13 @@ All the experiments carriedout with Type 2 diabetes dataset.
 ## Usage
 
 1. **Clone the Repository**: Clone this repository to your local machine using 
-```bash 
-git clone https://github.com/anushaihalapathirana/individualize_treatment_selection_t2d.git
-``````
+    ```bash 
+    git clone https://github.com/anushaihalapathirana/individualize_treatment_selection_t2d.git
+    ``````
 2. **Install Dependencies**: Install the necessary dependencies using 
-```bash
-pip install -r requirements.txt
-```
+    ```bash
+    pip install -r requirements.txt
+    ```
 3. **Data Preparation**: Ensure dataset files are in the `resources/data/` directory.
 4. **Imputate response variables**: To perform initial preprocessing, and impute all four response variables, execute the __init__.py script. This script handles:
 
