@@ -38,22 +38,6 @@ def read_data(file_path, sep = ',', decimal = '.', encoding = 'utf-8', engine ='
         
     df = pd.read_csv(file_path, sep = sep ,decimal = decimal, encoding = encoding, engine = engine, index_col=index_col)
     return df
-   
-def get_nan_count(df):
-    
-    """Print NaN count in selected columns
-
-        Args:
-            df : dataframe
-    """
-    
-    selected_columns = df[['hba1c_12m', 'ldl_12m', 'hdl_12m', 'bmi_12m']].columns
-    # Count NaN values in selected columns
-    nan_counts = df[selected_columns].isna().sum()
-    nan_info = pd.DataFrame({'Feature': selected_columns, 'NaN Count': nan_counts})
-    print("\n NaN counts in resonse variables:")
-    print(nan_info)
-    print()
     
 def preprocess(df, response_variable_list):
 

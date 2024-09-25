@@ -1,45 +1,23 @@
 import pandas as pd
 import numpy as np
 import random
-from matplotlib.pyplot import pie, axis, show
-import seaborn as sns
-import missingno as msno
-from scipy import stats
-import matplotlib.pyplot as plt
-import yaml
+import os
+import sys
 
-from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split, KFold
-from sklearn.feature_selection import RFE, SelectKBest, f_regression, mutual_info_regression
-from sklearn.impute import SimpleImputer, KNNImputer
-from sklearn import linear_model
-from sklearn.neural_network import MLPRegressor
-from sklearn.linear_model import Ridge
+from sklearn.feature_selection import RFE, SelectKBest, mutual_info_regression
 from sklearn.ensemble import RandomForestRegressor
 import statsmodels.regression.linear_model as sm
-from sklearn.gaussian_process import GaussianProcessRegressor as GPR
-from sklearn.gaussian_process.kernels import DotProduct, WhiteKernel, CompoundKernel
-import sklearn_relief as sr
 from skrebate import ReliefF
-from sklearn.ensemble import GradientBoostingRegressor
-from catboost import CatBoostRegressor
-from sklearn.linear_model import ElasticNet
-import lightgbm as ltb
-from sklearn.svm import SVR
-from scipy.stats import ks_2samp
-from tabulate import tabulate
-import statsmodels.regression.linear_model as sm
-from collections import Counter
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import mean_squared_error
 
-from xgboost.sklearn import XGBRegressor
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import mean_squared_error, r2_score
-from imblearn.over_sampling import RandomOverSampler
-from collections import Counter
-from imblearn.over_sampling import SMOTE, ADASYN
-from imblearn.over_sampling import BorderlineSMOTE
+from sklearn.multioutput import MultiOutputRegressor
 
-from sklearn.multioutput import RegressorChain, MultiOutputRegressor
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from helper import outlier_detect, get_model_name
 
 def read_data(file_path):
         """Read training data file
@@ -55,14 +33,15 @@ def get_nan_count(df):
 
         Args:
             df : dataframe
+            
+        Return: 
+            nan_info: Dataframe consists with nan count
     """
     selected_columns = df[['hba1c_12m', 'ldl_12m', 'hdl_12m', 'bmi_12m']].columns
     # Count NaN values in selected columns
     nan_counts = df[selected_columns].isna().sum()
     nan_info = pd.DataFrame({'Feature': selected_columns, 'NaN Count': nan_counts})
-    print("\n NaN counts in resonse variables:")
-    print(nan_info)
-    print()
+    return nan_info
     
 def get_missing_val_percentage(df):
     return (df.isnull().sum()* 100 / len(df))
@@ -79,7 +58,7 @@ def get_dfs(df_orginal):
 
         # filter by bmi
     df_orginal['bmi'] = df_orginal['bmi'].astype(float)
-    df_orginal['sp'] = df_orginal['sp'].astype(int)
+    df_orginal['sp'] = df_orginal['sp'].astype(float)
     df_orginal['ika'] = df_orginal['ika'].astype(float)
     df_orginal['smoking'] = df_orginal['smoking'].astype(float)
     return df_orginal
@@ -196,9 +175,9 @@ def preprocess(df, test_size, target_variable, variables_to_drop):
     return df, X_train, X_test, Y_train, Y_test, X, Y, scaler, df_missing_val, df_missing_val_original, df_original
  
 def countUsers(drug_id, df):
-    df2 = df.apply(lambda x : True
+    df_ = df.apply(lambda x : True
                 if x['drug_class'] == drug_id else False, axis = 1)
-    number_of_rows = len(df2[df2 == True].index)
+    number_of_rows = len(df_[df_ == True].index)
     return number_of_rows
 
 def print_sample_count(df, dpp_val, sglt_val, label = ''):
@@ -206,119 +185,6 @@ def print_sample_count(df, dpp_val, sglt_val, label = ''):
     print(' number of dpp4 : ', countUsers(dpp_val, df))
     print(' number of sglt2 : ', countUsers(sglt_val, df))
     
-def get_features_kbest(X_train, Y_train, k):
-    selector = SelectKBest(score_func=mutual_info_regression, k=k)
-    # Fit the selector to your data and transform the feature matrix
-    X_selected = selector.fit_transform(X_train, Y_train)
-
-    # Get the selected feature indices
-    selected_indices = selector.get_support(indices=True)
-
-    # Get the selected feature names
-    selected_features = X_train.columns[selected_indices]
-    selected_features = selected_features.to_list()
-    return selected_features
-
-
-def get_features_ref(X_train, Y_train, k=3): 
-    random.seed(42)
-    model = MultiOutputRegressor(RandomForestRegressor(random_state = 123))
-#     model = RandomForestRegressor(random_state = 123)
-    model.fit(X_train, Y_train)  # Fit the model before using RFE
-    base_estimator = RandomForestRegressor(random_state=123)
-    rfe = RFE(estimator=base_estimator, n_features_to_select=k)  
-    X_selected = rfe.fit_transform(X_train, Y_train)
-    selected_indices = rfe.get_support(indices=True)
-    selected_features = [feature_name for feature_name in X_train.columns[selected_indices]]
-    return selected_features
-
-def get_features_ref_single(X_train, Y_train, k=3): 
-    random.seed(42)  # Fit the model before using RFE
-    model = RandomForestRegressor(random_state=123)
-    rfe = RFE(estimator=model, n_features_to_select=k)  
-    X_selected = rfe.fit_transform(X_train, Y_train)
-    selected_indices = rfe.get_support(indices=True)
-    selected_features = [feature_name for feature_name in X_train.columns[selected_indices]]
-    return selected_features
-
-def get_features_relieff(X_train, Y_train, k):
-    best_n = k
-    X_train_array = X_train.to_numpy()
-    y_train_array = Y_train.to_numpy()
-    fs = ReliefF()
-
-    # Perform feature selection on the training data
-    fs.fit(X_train_array, y_train_array)
-
-    feat_dict = {}
-    for feature_name, feature_score in zip(X_train.columns,
-                                               fs.feature_importances_):
-        feat_dict[feature_name] = feature_score
-
-    # sort and get most important features
-    feat_names = []
-    sorted_feat_dict = sorted(feat_dict.items(), key=lambda x: x[1], reverse=True)
-
-    best = sorted_feat_dict[: best_n]
-    for i in best:
-        feat_names.append(i[0])
-    return feat_names
-
-
-def outlier_detect(X_train, Y_train, X_test, Y_test):
-    # Fit the model for each output in Y_train
-    models = []
-    predictions_train = []
-    #X_train = X_train.apply(pd.to_numeric)
-    #Y_train = pd.to_numeric(Y_train)
-    for col in Y_train.columns:
-        model = sm.OLS(Y_train[col], X_train).fit()
-        predictions_train.append(model.predict(X_train))
-        models.append(model)
-
-    # Make predictions for each output in Y_test
-    predictions = np.column_stack([model.predict(X_test) for model in models])
-
-    # Print out the statistics for each output
-    #for i, model in enumerate(models):
-    #    print(f"Summary for Output {i + 1}:")
-    #    display(model.summary())
-
-    # Check for outliers in training set
-    out_train = []
-    for i, col in enumerate(Y_train.columns):
-        error = Y_train[col] - predictions_train[i]
-        stdres = (error - np.mean(error)) / np.std(error)
-        c = stdres.abs() > 4
-        #display(Counter(c))
-        index_outlier = np.where(c == True)
-        #display(index_outlier)
-        index = stdres.index
-        for j in range(len(c)):
-            if c.iloc[j] == True:
-                #print(f"Output {i + 1}, Train, Outlier Index: {index[j]}")
-                out_train.append(index[j])
-
-    # Check for outliers in testing set
-    out_test = []
-    for i, col in enumerate(Y_test.columns):
-        error = Y_test[col] - predictions[:, i]
-        stdres = (error - np.mean(error)) / np.std(error)
-        c = stdres.abs() > 4
-        #display(Counter(c))
-        index_outlier = np.where(c == True)
-        #display(index_outlier)
-        index = stdres.index
-        for j in range(len(c)):
-            if c.iloc[j] == True:
-                #print(f"Output {i + 1}, Test, Outlier Index: {index[j]}")
-                out_test.append(index[j])
-
-    print("Training set outliers:", out_train)
-    print("Testing set outliers:", out_test)
-    
-    return out_train, out_test
-
 def remove_outliers(X_train, X_test, Y_train, Y_test, response_variable_list):
         ################# OUTLIER ################
         print('Shape of training data before removing outliers:', np.shape(X_train))
@@ -345,73 +211,6 @@ def remove_outliers(X_train, X_test, Y_train, Y_test, response_variable_list):
         print('Shape of test data after removing outliers:', np.shape(X_test))
         
         return X_train, X_test, Y_train, Y_test
-    
-def cross_val(model, train, X_train, Y_train, response_variable_list, n_splits=10):
-    
-    dfs = []
-    acc_arr = []
-    kf = KFold(n_splits=n_splits, shuffle=True, random_state=123)
-    i = 1
-    for train_index, test_index in kf.split(train, Y_train):
-        X_train1 = train.iloc[train_index].loc[:, X_train.columns]
-        X_test1 = train.iloc[test_index].loc[:,X_train.columns]
-        y_train1 = train.iloc[train_index].loc[:,response_variable_list]
-        y_test1 = train.iloc[test_index].loc[:,response_variable_list]
-        
-        #Train the model
-        model.fit(X_train1, y_train1) #Training the model
-        
-        # auc cal
-        y_scores = model.predict(X_test1)
-        score = model.score(X_test1, y_test1)
-        acc_arr.append(score)
-        
-        # How many occurrences appear in the train set
-        s_train = y_train1.apply(lambda col: col.value_counts()).transpose()
-        s_train.columns = [f"train {i}_" + str(col) for col in s_train.columns]
-        
-        s_test = y_test1.apply(lambda col: col.value_counts()).transpose()
-        s_test.columns = [f"test {i}_" + str(col) for col in s_test.columns]
-        
-        df = pd.concat([s_train, s_test], axis=1, sort=False)
-        dfs.append(df)
-
-        i += 1
-
-    variance = np.var(acc_arr, ddof=1)
-    
-    print("Cross validation variance" , variance)
-    print("Cross validation mean score" , sum(acc_arr) / len(acc_arr))
-    return model
-
-def get_model_name(model):
-    model_name = str(type(model)).split('.')[-1][:-2]
-    return model_name
-
-
-model_results = {}
-model_results_drugs = {}
-
-def get_scores(model, X_test, Y_test, X_train, Y_train, name = ''):
-    preds = model.predict(X_test)
-    score = model.score(X_test,Y_test)
-    
-    # Calculate R2 scores for each target
-    r2_train = model.score(X_train, Y_train)
-    r2_test = model.score(X_test, Y_test)
-        
-    print(f'R2 score Training :', r2_train)
-    print(f'R2 score Testing :', r2_test)
-        
-    rmse = np.sqrt(mean_squared_error(Y_test, preds))
-    print(f"RMSE (Target): {rmse}")
-        
-    if not name.strip():
-        model_results[str(get_model_name(model))] = score
-    else:
-        model_results_drugs[str(get_model_name(model)+'_'+name)] = score
-        
-    return preds, model_results, model_results_drugs, score
 
 def missing_value_prediction(model, df_missing, df_original, selected_features, df_missing_val_original, file_path, target_variable):
     df_missing_val = df_missing[selected_features]

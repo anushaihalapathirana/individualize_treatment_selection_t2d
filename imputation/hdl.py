@@ -8,7 +8,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from xgboost.sklearn import XGBRegressor
 
 from constants import COMMON_VARIABLE_PATH, HDL_PATH, SEED, TRAIN_PATH
-from utils import preprocess, remove_outliers, cross_val, get_scores, read_data, missing_value_prediction
+from helper import cross_val, get_scores
+from utils import preprocess, remove_outliers, read_data, missing_value_prediction
    
 class ImputationHDL:
     
@@ -48,6 +49,7 @@ class ImputationHDL:
         train[self.response_variable_list] = Y_train[self.response_variable_list].copy()
         
         model_results = {}
+        model_results_drugs = {}
         
         model = XGBRegressor(
             n_estimators=40, 
@@ -60,12 +62,12 @@ class ImputationHDL:
             learning_rate =0.1
         )
         
-        model = cross_val(model, train , X_train, Y_train, self.response_variable_list)
+        model = cross_val(model, train, X_test, Y_test, X_train, Y_train, self.response_variable_list)
         # fit the model
         model.fit(X_train, Y_train)
         
         # summarize prediction
-        original_data_pred, model_results, model_results_drugs_ori, score_ori = get_scores(model, X_test, Y_test, X_train, Y_train)
+        original_data_pred, model_results, model_results_drugs_ori, score_ori = get_scores(model, X_test, Y_test, X_train, Y_train, model_results, model_results_drugs)
         return original_data_pred, model_results, model_results_drugs_ori, score_ori, model
         
     

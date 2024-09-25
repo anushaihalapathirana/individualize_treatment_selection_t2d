@@ -96,7 +96,10 @@ class ImputationPreprocessing:
         df['smoking'] = df['smoking'].astype(float)
 
         # print the nan counts
-        get_nan_count(df)
+        nan_info = get_nan_count(df)
+        print("\n NaN counts in resonse variables:")
+        print(nan_info)
+        print()
         
         #delete columns with more than threshold NaN. get missing values < threshold feature name list
         missing_per = get_missing_val_percentage(df)
