@@ -35,7 +35,7 @@ All the experiments carriedout with Type 2 diabetes dataset.
     - `output`: Includes the data generated throughout the analysis and modeling process. (Note: This folder is currently empty due to privacy agreements regarding data usage.)
 - `src/`: Contains code for training, evaluating, and analyzing the performance of machine learning models and SHAP explanations.
 - `notebooks/`: This directory contains Jupyter notebook versions of the Python scripts. The notebooks in this directory replicate the functionality of the corresponding `.py` files, except for the notebooks located in the `Other models/` directory. The `Other models/` directory contains notebooks that do not have corresponding `.py` files.
-
+- `test/`: These folders dedicated for testing helper functions. The tests are implemented using pytest. You can run the tests to verify the correctness of the helper functions and their integration into the overall project.
 
 ## Usage
 
@@ -67,7 +67,15 @@ Other high performance model scripts are in the `src/models/best_models` directo
         
         This script will execute all .py file in the `src/models/best_models/` directory and displays the reuslts using both aggregation methods. By running this script, you can easily analyze the performance of all the models in one go.
 8. **Review Results**: Explore output figures in the `resources/img/` directory.
-
+9. **Run Test Cases**: Ensure pytest is installed. To run the test files, navigate to the directory containing the test files. For example:
+    ```bash 
+    cd imputation/test
+    ``````
+    Execute the tests using the following command
+    ```bash 
+    pytest
+    ``````
+    After running the tests, you will see a summary of the test results in your terminal, indicating which tests passed or failed.
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
