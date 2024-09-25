@@ -3,9 +3,8 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
-from sklearn.metrics import roc_curve
 from sklearn.metrics import roc_curve, roc_auc_score
-from tabulate import tabulate
+
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  
 
@@ -35,7 +34,7 @@ def ensemble_based_on_majority(df_drug, hba1c_label, pred_label):
     df = df_drug.copy()
     num_columns = df.shape[1]
     row_sums = df.sum(axis=1)
-    df[pred_label] = np.where(row_sums == (num_columns / 2), df[hba1c_label], (row_sums > (num_columns / 2)).astype(int))
+    df[pred_label] = np.where(row_sums == (num_columns / 2), df[hba1c_label].astype(int), (row_sums > (num_columns / 2)).astype(int))
     return df[pred_label]
 
 def calculate_accuracy(df, true_label, pred_label):
@@ -54,9 +53,10 @@ def calculate_accuracy(df, true_label, pred_label):
     
     correct_predictions = (df[true_label] == df[pred_label]).sum()
     total_predictions = df.shape[0]
+    if total_predictions == 0:
+        return 0.0
     accuracy = correct_predictions / total_predictions
     return accuracy
-
 
 def find_optimal_threshold(actual_values, weighted_sum):
     
@@ -77,6 +77,12 @@ def find_optimal_threshold(actual_values, weighted_sum):
         - The optimal threshold is marked with a red dot, representing the best balance between sensitivity and specificity.
 
     """
+    if len(np.unique(actual_values)) < 2:
+        raise ValueError("Both classes (0 and 1) must be present in actual_values to calculate the ROC AUC score.")
+    
+    # Check if all weighted_sum values are constant
+    if len(np.unique(weighted_sum)) == 1:
+        return 0.5  # or any other reasonable default value
     
     # Compute ROC curve
     fpr, tpr, thresholds = roc_curve(actual_values, weighted_sum)
