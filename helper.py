@@ -444,7 +444,7 @@ def get_scores(model, X_test, Y_test, X_train, Y_train, model_results, model_res
         model_results_drugs[str(get_model_name(model)+'_'+name)] = r2_score(Y_test, pred)
     return pred, model_results, model_results_drugs, score
 
-def get_outliers(Y, predictions):
+def get_outliers(Y, predictions, threshold = 4):
     """
     Detects outliers based on standardized residuals.
     
@@ -463,7 +463,7 @@ def get_outliers(Y, predictions):
         stdres = (error - np.mean(error)) / np.std(error)  # Standardized residuals
         
         # Identify outliers based on the threshold
-        outliers.extend(Y.index[abs(stdres) > 4])
+        outliers.extend(Y.index[abs(stdres) > threshold])
     
     return outliers
 
@@ -500,9 +500,9 @@ def outlier_detect(X_train, Y_train, X_test, Y_test):
     predictions = np.column_stack([model.predict(X_test) for model in models])
     
     # Detect outliers in the training set
-    out_train = get_outliers(Y_train, predictions_train)
+    out_train = get_outliers(Y_train, predictions_train, 4)
     # Detect outliers in the testing set
-    out_test = get_outliers(Y_test, predictions)
+    out_test = get_outliers(Y_test, predictions, 4)
 
     print("Training set outliers:", out_train)
     print("Testing set outliers:", out_test)
@@ -570,7 +570,7 @@ def pred_all(model, row, drug_class):
     Raises:
         ValueError: If an invalid drug class is provided.
     """
-    
+    row = row.copy()
     if drug_class == SGLT_VALUE:
         pred_sglt_ = model.predict(row.values[None])[0]
         row['drug_class'] = DPP_VALUE
@@ -637,7 +637,6 @@ def find_highest_respponse_value(pred_sglt, pred_dpp):
     drug_class = [SGLT_VALUE, DPP_VALUE][max_index]
     return max_difference, drug_class
 
-#### new change
 def find_closest_to_42(pred_sglt, pred_dpp):
     
     """
@@ -694,7 +693,7 @@ def predict_drug_classes(model, X_test, Y_train):
     for index, row in X_test.iterrows():
         drug_class = row['drug_class']
         pred_sglt, pred_dpp = pred_all(model, row, drug_class)
-
+        
         # Process predictions for each response variable
         for j, var in enumerate(response_vars):
             if var == 'hdl':
@@ -769,7 +768,7 @@ def get_strata(df, drug_col, drug_value):
     
     return df[df[drug_col] == drug_value]
     
-def check_aggreement(df, discordant_1, data, variable_name):
+def check_aggreement(df, discordant, data, variable_name):
     
     """
     Checks the agreement between drug class assignments and specified variable values in the dataset.
@@ -781,22 +780,22 @@ def check_aggreement(df, discordant_1, data, variable_name):
 
     Args:
         df (DataFrame): The input DataFrame containing drug class assignments and other relevant data.
-        discordant_1 (str): The drug class to be considered as discordant.
+        discordant (str): The drug class to be considered as discordant.
         data (DataFrame): A DataFrame used to ensure the concordant DataFrame has the same columns.
         variable_name (str): The name of the column in `df` to check for agreement with the drug class.
 
     Returns:
         tuple: A tuple containing:
             - concordant (DataFrame): DataFrame of rows where the variable matches the drug class.
-            - discordant_df_1 (DataFrame): DataFrame of rows that are discordant with respect to `discordant_1`.
+            - discordant_ (DataFrame): DataFrame of rows that are discordant with respect to `discordant`.
     """
     
-    discordant_df_1 = pd.DataFrame(columns=data.columns)
+    discordant_ = pd.DataFrame(columns=data.columns)
 
     concordant = df[df[variable_name] == df['drug_class']]
-    discordant_df_1 = df[df['drug_class'] == discordant_1]
+    discordant_ = df[df['drug_class'] == discordant]
     
-    return concordant, discordant_df_1
+    return concordant, discordant_
 
 def get_concordant_discordant(dpp_strata,sglt_strata, data, dpp_strata_actual, sglt_strata_actual, variable_name):
 
