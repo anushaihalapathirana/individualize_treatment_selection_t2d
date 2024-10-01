@@ -11,7 +11,7 @@ from unittest.mock import Mock
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from helper import preprocess, countUsers, get_model_name, get_scores, get_outliers, pred_all, find_lowest_respponse_value,\
-    find_highest_respponse_value, find_closest_to_42, get_strata, check_aggreement, get_perc
+    find_highest_respponse_value, find_closest_to_42, get_strata, check_aggreement, get_perc, min_max_normalize
 from constants import SGLT_VALUE, DPP_VALUE
 
 def test_preprocess():
@@ -425,3 +425,40 @@ def test_get_perc():
 
     with pytest.raises(ValueError, match="operands could not be broadcast together"):
         get_perc(variable_1, variable_2)
+
+def test_min_max_normalize():
+    # Test case 1: Normal case with positive integers
+    arr = np.array([1, 2, 3, 4, 5])
+    expected_normalized = np.array([0.0, 0.25, 0.5, 0.75, 1.0])
+    normalized = min_max_normalize(arr)
+    np.testing.assert_array_almost_equal(normalized, expected_normalized)
+
+    # Test case 2: Normal case with negative and positive values
+    arr = np.array([-2, -1, 0, 1, 2])
+    expected_normalized = np.array([0.0, 0.25, 0.5, 0.75, 1.0])
+    normalized = min_max_normalize(arr)
+    np.testing.assert_array_almost_equal(normalized, expected_normalized)
+
+    # Test case 3: All elements are the same
+    arr = np.array([5, 5, 5, 5])
+    expected_normalized = np.array([0.0, 0.0, 0.0, 0.0])  # Handle division by zero case
+    normalized = min_max_normalize(arr)
+    np.testing.assert_array_almost_equal(normalized, expected_normalized)
+
+    # Test case 4: Empty array
+    arr = np.array([])
+    expected_normalized = np.array([])  # Should return an empty array
+    normalized = min_max_normalize(arr)
+    np.testing.assert_array_almost_equal(normalized, expected_normalized)
+
+    # Test case 5: Array with NaN values
+    arr = np.array([1, 2, np.nan, 4, 5])
+    expected_normalized = np.array([0.0, 0.25, np.nan, 0.75, 1.0])
+    normalized = min_max_normalize(arr)
+    np.testing.assert_array_almost_equal(normalized, expected_normalized)
+
+    # Test case 6: Single element array
+    arr = np.array([10])
+    expected_normalized = np.array([0.0])  # Should return 0.0 as the only value
+    normalized = min_max_normalize(arr)
+    np.testing.assert_array_almost_equal(normalized, expected_normalized)

@@ -1459,9 +1459,20 @@ def min_max_normalize(arr):
         normalized (arr): Normalized data
     """
     
-    min_val = np.min(arr)
-    max_val = np.max(arr)
+    if arr.size == 0:
+        return arr  # Return empty array
+    
+    # Compute min and max while ignoring NaN values
+    min_val = np.nanmin(arr)
+    max_val = np.nanmax(arr)
+
+    # Handle the case where all elements are NaN or the same value
+    if min_val == max_val:
+        return np.zeros_like(arr)  # Return an array of zeros
+
+    # Normalize, ignoring NaN values
     normalized = (arr - min_val) / (max_val - min_val)
+    
     return normalized
 
 def get_feature_importance(model, X, file_path):
