@@ -19,6 +19,9 @@ PREDICTED_DRUG_CLASS_FILE_LOCATION = 'resources/output/pred_drug_classes.csv'
 PREPROCESSED_DATA_FILE_LOCATION = 'resources/output/preprocessed_data.csv'
 FEATURE_IMPORTANCE_DF_LOCATION = 'resources/output/feature_importance_dataframe.csv'
 
+# Path to data stats file
+DATA_STATS_FILE_LOCATION = 'resources/output/data_stats.csv'
+
 # Paths to the visualization plots
 SCATTER_PLOT_ACTUAL_VS_PRED = 'resources/img/multi_output_scatter_plot.jpeg'
 SCATTER_BOX_PLOT_HBA1C = 'resources/img/scatter_and_box_plot_hba1c.jpeg'

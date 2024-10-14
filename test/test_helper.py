@@ -11,7 +11,7 @@ from unittest.mock import Mock
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from helper import preprocess, countUsers, get_model_name, get_scores, get_outliers, pred_all, find_lowest_respponse_value,\
-    find_highest_respponse_value, find_closest_to_42, get_strata, check_aggreement, get_perc, min_max_normalize
+    find_highest_respponse_value, find_closest_to_42, get_strata, check_aggreement, get_perc, min_max_normalize, get_stats
 from constants import SGLT_VALUE, DPP_VALUE
 
 def test_preprocess():
@@ -462,3 +462,34 @@ def test_min_max_normalize():
     expected_normalized = np.array([0.0])  # Should return 0.0 as the only value
     normalized = min_max_normalize(arr)
     np.testing.assert_array_almost_equal(normalized, expected_normalized)
+
+def test_get_stats():
+    # Sample test data
+    data = {
+        'A': [1, 2, 3, 4, 5],
+        'B': [10, 20, 30, None, 50],
+        'C': [None, None, None, None, None],  # All NaN
+    }
+
+    df = pd.DataFrame(data)
+    # Test case 1: Normal case with integers
+    mean, median = get_stats(df, 'A')
+    assert mean == 3.0, "Mean of A should be 3.0"
+    assert median == 3.0, "Median of A should be 3.0"
+
+    # Test case 2: Normal case with floats and NaN values
+    mean, median = get_stats(df, 'B')
+    assert mean == 27.5, "Mean of B should be 27.5"
+    assert median == 25.0, "Median of B should be 20.0"
+
+    # Test case 3: All NaN values
+    mean, median = get_stats(df, 'C')
+    assert pd.isna(mean), "Mean of C should be NaN"
+    assert pd.isna(median), "Median of C should be NaN"
+
+    # Test case 4: Check behavior with a non-existing column
+    try:
+        get_stats(df, 'D')
+    except KeyError as e:
+        assert str(e) == "'D'", "Should raise KeyError for non-existing column"
+

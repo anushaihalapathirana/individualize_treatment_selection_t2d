@@ -1559,3 +1559,20 @@ def get_feature_importance_for_voting_regressor(model, X, file_path):
     else:
         print("No feature importances found for any regressor.")
         return None
+    
+def get_stats(df, key):
+    """
+    Calculate the mean and median of a specified column in a DataFrame.
+
+    df : pandas.DataFrame
+        The DataFrame from which the statistics will be calculated.
+    key : str
+        The name of the column (feature) for which the mean and median are to be computed.
+
+    Returns: tuple
+        A tuple containing the mean and median values of the specified column.
+    """
+    mean_value = df[key].mean()
+    median_value = df[key].median()
+
+    return mean_value, median_value
